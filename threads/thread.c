@@ -70,7 +70,7 @@ static tid_t allocate_tid (void);
  * Read the CPU's stack pointer `rsp', and then round that
  * down to the start of a page.  Since `struct thread' is
  * always at the beginning of a page and the stack pointer is
- * somewhere in the middle, this locates the curent thread. */
+ * somewhere in the middle, this locates the current thread. */
 #define running_thread() ((struct thread *) (pg_round_down (rrsp ())))
 
 
@@ -218,9 +218,9 @@ thread_create (const char *name, int priority,
    primitives in synch.h. */
 void
 thread_block (void) {
-	ASSERT (!intr_context ());
-	ASSERT (intr_get_level () == INTR_OFF);
-	thread_current ()->status = THREAD_BLOCKED;
+	ASSERT (!intr_context ());  // Unavailable interrupt
+	ASSERT (intr_get_level () == INTR_OFF);  // Unavailable interrupt
+	thread_current ()->status = THREAD_BLOCKED;  // Current thread is blocked
 	schedule ();
 }
 
@@ -241,8 +241,8 @@ thread_unblock (struct thread *t) {
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
 	list_push_back (&ready_list, &t->elem);
-	t->status = THREAD_READY;
-	intr_set_level (old_level);
+    t->status = THREAD_READY;
+    intr_set_level (old_level);
 }
 
 /* Returns the name of the running thread. */
@@ -541,7 +541,7 @@ do_schedule(int status) {
 static void
 schedule (void) {
 	struct thread *curr = running_thread ();
-	struct thread *next = next_thread_to_run ();
+	struct thread *next = next_thread_to_run ();  // Ready list 에 있는 최우선 Thread
 
 	ASSERT (intr_get_level () == INTR_OFF);
 	ASSERT (curr->status != THREAD_RUNNING);

@@ -7,6 +7,7 @@
 #include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "lib/kernel/list.h"
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -24,6 +25,10 @@ static int64_t ticks;
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
+/* List of processes in THREAD_BLOCKED state, that is, processes
+   that are blocked (slept) . */
+static struct list block_list;
+
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
@@ -34,15 +39,18 @@ static void real_time_sleep (int64_t num, int32_t denom);
    corresponding interrupt. */
 void
 timer_init (void) {
-	/* 8254 input frequency divided by TIMER_FREQ, rounded to
-	   nearest. */
-	uint16_t count = (1193180 + TIMER_FREQ / 2) / TIMER_FREQ;
 
-	outb (0x43, 0x34);    /* CW: counter 0, LSB then MSB, mode 2, binary. */
-	outb (0x40, count & 0xff);
-	outb (0x40, count >> 8);
+    list_init (&block_list);
 
-	intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+    /* 8254 input frequency divided by TIMER_FREQ, rounded to
+       nearest. */
+    uint16_t count = (1193180 + TIMER_FREQ / 2) / TIMER_FREQ;
+
+    outb (0x43, 0x34);    /* CW: counter 0, LSB then MSB, mode 2, binary. */
+    outb (0x40, count & 0xff);
+    outb (0x40, count >> 8);
+
+    intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -75,7 +83,7 @@ int64_t
 timer_ticks (void) {
 	enum intr_level old_level = intr_disable ();
 	int64_t t = ticks;
-	intr_set_level (old_level);
+    intr_set_level (old_level);
 	barrier ();
 	return t;
 }
@@ -92,9 +100,21 @@ void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 
+    /* Busy waiting
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
+	while (timer_elapsed (start) < tks)
 		thread_yield ();
+    */
+
+    if (ticks > 0) {
+        struct thread *curr = thread_current(); // get current thread
+        curr -> alarm_tick = start + ticks;
+
+        enum intr_level old_intr_level = intr_disable();  // disable interrupt; intr_level == INTR_OFF
+        list_push_back(&block_list, &curr->elem);  // block list 에 thread 넣음
+        thread_block(); // 현재 thread block --> 여기서 일단 멈추고, unblock 되면 다시 아래로 코드 시작
+        intr_set_level(old_intr_level);
+    }
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -124,8 +144,24 @@ timer_print_stats (void) {
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
-	ticks++;
-	thread_tick ();
+    struct list_elem* current_list_elem;
+
+    ticks ++;
+    thread_tick ();
+
+    if (list_size (&block_list) > 0) {
+        current_list_elem = list_begin(&block_list);
+
+        while (current_list_elem != list_end(&block_list)) {
+            struct thread *target_thread = list_entry (current_list_elem, struct thread, elem);
+            if (ticks >= list_entry (current_list_elem, struct thread, elem)->alarm_tick ) {
+                current_list_elem = list_remove (current_list_elem);
+                thread_unblock(target_thread);
+            } else {
+                current_list_elem = list_next (current_list_elem);
+            }
+        }
+    }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

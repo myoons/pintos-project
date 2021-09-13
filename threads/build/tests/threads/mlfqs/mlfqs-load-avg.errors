@@ -1,0 +1,18 @@
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.vmx [bit 5]
+qemu-system-x86_64: terminating on signal 2
+Traceback (most recent call last):
+  File "/home/myoons/pintos-project/utils/pintos", line 220, in <module>
+    Pintos(ttest=args.threads_tests, mem=args.memory, no_vga=args.no_vga,
+  File "/home/myoons/pintos-project/utils/pintos", line 166, in run
+    subprocess.run(cmd, **args)
+  File "/home/myoons/anaconda3/lib/python3.8/subprocess.py", line 495, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/home/myoons/anaconda3/lib/python3.8/subprocess.py", line 1028, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/home/myoons/anaconda3/lib/python3.8/subprocess.py", line 1896, in _communicate
+    self.wait(timeout=self._remaining_time(endtime))
+  File "/home/myoons/anaconda3/lib/python3.8/subprocess.py", line 1083, in wait
+    return self._wait(timeout=timeout)
+  File "/home/myoons/anaconda3/lib/python3.8/subprocess.py", line 1802, in _wait
+    time.sleep(delay)
+KeyboardInterrupt
