@@ -1,2 +1,4 @@
 .idea
 **/.idea
+threads/build/tests
+tests/

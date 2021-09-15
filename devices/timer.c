@@ -107,12 +107,12 @@ timer_sleep (int64_t ticks) {
     */
 
     if (ticks > 0) {
-        struct thread *curr = thread_current(); // get current thread
+        struct thread *curr = thread_current();
         curr -> alarm_tick = start + ticks;
 
-        enum intr_level old_intr_level = intr_disable();  // disable interrupt; intr_level == INTR_OFF
-        list_push_back(&block_list, &curr->elem);  // block list 에 thread 넣음
-        thread_block(); // 현재 thread block --> 여기서 일단 멈추고, unblock 되면 다시 아래로 코드 시작
+        enum intr_level old_intr_level = intr_disable();
+        list_push_back(&block_list, &curr->elem);
+        thread_block();
         intr_set_level(old_intr_level);
     }
 }
@@ -154,7 +154,7 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 
         while (current_list_elem != list_end(&block_list)) {
             struct thread *target_thread = list_entry (current_list_elem, struct thread, elem);
-            if (ticks >= list_entry (current_list_elem, struct thread, elem)->alarm_tick ) {
+            if (ticks == target_thread->alarm_tick ) {
                 current_list_elem = list_remove (current_list_elem);
                 thread_unblock(target_thread);
             } else {

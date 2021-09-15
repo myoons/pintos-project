@@ -93,7 +93,7 @@ struct thread {
 	int priority;                       /* Priority. */
 
 
-    int64_t alarm_tick;
+    int64_t alarm_tick;                 /* Number of absolute ticks that corresponding thread should be unblocked */
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
