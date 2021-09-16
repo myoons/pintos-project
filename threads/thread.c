@@ -40,6 +40,17 @@ static struct lock tid_lock;
 /* Thread destruction requests */
 static struct list destruction_req;
 
+/* Returns true if priority of thread a is less than priority of thread b, false
+   otherwise. */
+bool
+priority_less (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
+{
+    struct thread *a = list_entry (a_, struct thread, elem);
+    struct thread *b = list_entry (b_, struct thread, elem);
+
+    return a->priority < b->priority;
+}
+
 /* Statistics. */
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
@@ -207,6 +218,10 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+    /* If created thread has higher priority than current thread, yield cpu */
+    if (thread_current()->priority < t->priority)
+        thread_yield();
+
 	return tid;
 }
 
@@ -218,9 +233,9 @@ thread_create (const char *name, int priority,
    primitives in synch.h. */
 void
 thread_block (void) {
-	ASSERT (!intr_context ());  // Unavailable interrupt
-	ASSERT (intr_get_level () == INTR_OFF);  // Unavailable interrupt
-	thread_current ()->status = THREAD_BLOCKED;  // Current thread is blocked
+	ASSERT (!intr_context ());
+	ASSERT (intr_get_level () == INTR_OFF);
+	thread_current ()->status = THREAD_BLOCKED;
 	schedule ();
 }
 
@@ -240,7 +255,11 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+    /* Unblocked thread should be pushed to ready list .
+     * Then sort the threads in ready list ascending order of priority */
+    list_push_front (&ready_list, &t->elem);
+    list_sort (&ready_list, priority_less, NULL);
+
     t->status = THREAD_READY;
     intr_set_level (old_level);
 }
@@ -296,14 +315,19 @@ thread_exit (void) {
    may be scheduled again immediately at the scheduler's whim. */
 void
 thread_yield (void) {
-	struct thread *curr = thread_current ();
-	enum intr_level old_level;
+    struct thread *curr = thread_current();
+    enum intr_level old_level;
 
-	ASSERT (!intr_context ());
+    ASSERT(!intr_context());
 
-	old_level = intr_disable ();
-	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+    old_level = intr_disable();
+    if (curr != idle_thread) {
+        /* Thread that was currently running should be pushed back to ready list .
+         * Then sort the threads in ready list ascending order of priority */
+        list_push_front(&ready_list, &curr->elem);
+        list_sort(&ready_list, priority_less, NULL);
+    }
+
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -311,7 +335,26 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+    struct list_elem* current_list_elem;
+
+    thread_current()->original_priority = new_priority;
+    if (list_empty(&thread_current()->list_donated_threads))
+        thread_current()->priority = thread_current()->original_priority;
+
+        /* If there is any thread that has higher priority than new_priority, Yield */
+    if (list_size (&ready_list) > 0) {
+        current_list_elem = list_begin(&ready_list);
+
+        while (current_list_elem != list_end(&ready_list)) {
+            struct thread *target_thread = list_entry (current_list_elem, struct thread, elem);
+            if (new_priority < target_thread->priority) {
+                thread_yield();
+                break;
+            }
+            current_list_elem = list_next(current_list_elem);
+        }
+    }
+
 }
 
 /* Returns the current thread's priority. */
@@ -409,6 +452,12 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+    /* Store original priority of the thread due to priority donation */
+    t->original_priority = priority;
+
+    /* Initialize list of donated threads */
+    list_init(&t->list_donated_threads);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -421,7 +470,9 @@ next_thread_to_run (void) {
 	if (list_empty (&ready_list))
 		return idle_thread;
 	else
-		return list_entry (list_pop_front (&ready_list), struct thread, elem);
+        /* Since ready list is sorted ascending order of priority,
+         * pop next thread from the back of ready list which has the highest priority */
+		return list_entry (list_pop_back (&ready_list), struct thread, elem);
 }
 
 /* Use iretq to launch the thread */
@@ -567,7 +618,7 @@ schedule (void) {
 		   schedule(). */
 		if (curr && curr->status == THREAD_DYING && curr != initial_thread) {
 			ASSERT (curr != next);
-			list_push_back (&destruction_req, &curr->elem);
+            list_push_front (&destruction_req, &curr->elem);
 		}
 
 		/* Before switching the thread, we first save the information

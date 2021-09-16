@@ -149,12 +149,12 @@ timer_interrupt (struct intr_frame *args UNUSED) {
     ticks ++;
     thread_tick ();
 
-    if (list_size (&block_list) > 0) {
+    if (!list_empty(&block_list)) {
         current_list_elem = list_begin(&block_list);
 
         while (current_list_elem != list_end(&block_list)) {
             struct thread *target_thread = list_entry (current_list_elem, struct thread, elem);
-            if (ticks == target_thread->alarm_tick ) {
+            if (ticks >= target_thread->alarm_tick ) {
                 current_list_elem = list_remove (current_list_elem);
                 thread_unblock(target_thread);
             } else {

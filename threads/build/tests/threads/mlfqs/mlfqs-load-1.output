@@ -11,7 +11,7 @@ Executing 'mlfqs-load-1':
 (mlfqs-load-1) spinning for up to 45 seconds, please wait...
 (mlfqs-load-1) FAIL: load average stayed below 0.5 for more than 45 seconds
 Kernel PANIC at ../../tests/threads/tests.c:93 in fail(): test failed
-Call stack: 0x80042131b8 0x80042167ba 0x80042197f6 0x80042165f4 0x8004206636 0x8004206783 0x8004206120.
+Call stack: 0x8004213831 0x8004216e33 0x8004219e6f 0x8004216c6d 0x8004206636 0x8004206783 0x8004206120.
 The `backtrace' program can make call stacks useful.
 Read "Backtraces" in the "Debugging Tools" chapter
 of the Pintos documentation for more information.

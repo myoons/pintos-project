@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -92,10 +93,14 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
-
     int64_t alarm_tick;                 /* Number of absolute ticks that corresponding thread should be unblocked */
 
-	/* Shared between thread.c and synch.c. */
+    int original_priority;              /* Original priority of the corresponding thread; Donation changes priority */
+    struct lock* lock_on_waiting;       /* Pointer of lock that corresponding thread is waiting; For nested donation */
+    struct list list_donated_threads;   /* List of donated threads to corresponding thread; For multiple donations */
+    struct list_elem elem_for_donation; /* List element for donation */
+
+ /* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
@@ -145,5 +150,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
+
+bool priority_less (const struct list_elem*, const struct list_elem*, void*);
 
 #endif /* threads/thread.h */
