@@ -73,6 +73,7 @@ sema_down (struct semaphore *sema) {
 
         thread_block ();
 	}
+
 	sema->value--;
 	intr_set_level (old_level);
 }
@@ -109,26 +110,27 @@ sema_try_down (struct semaphore *sema) {
 void
 sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
+    struct thread* max_priority_waiter;
 
 	ASSERT (sema != NULL);
 
 	old_level = intr_disable ();
 
-    sema->value++;
-
     if (!list_empty (&sema->waiters)) {
+
         /* Sort the threads in waiting list ascending order of priority */
         list_sort(&sema->waiters, priority_less, NULL);
-        struct thread* max_priority_waiting_thread = list_entry(list_pop_back(&sema->waiters), struct thread, elem);
+        max_priority_waiter = list_entry(list_pop_back(&sema->waiters), struct thread, elem);
 
         /* Since waiting list is sorted ascending order of priority,
          * pop thread from the back of waiting list which has the highest priority */
-        thread_unblock(max_priority_waiting_thread);
-
-        /* If the unblocked thread has higher priority than current thread, Yield */
-        if (thread_current()->priority < max_priority_waiting_thread->priority)
-            thread_yield();
+        thread_unblock(max_priority_waiter);
     }
+
+    sema->value++;
+
+    /* Yield */
+    thread_yield();
 
     intr_set_level (old_level);
 }
@@ -205,36 +207,38 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
-    struct thread* thread_holding_lock = lock->holder;
-    /* If the lock is already held by other thread */
-    if (thread_holding_lock != NULL) {
+    if (!thread_mlfqs) {
+        struct thread *thread_holding_lock = lock->holder;
+        /* If the lock is already held by other thread */
+        if (thread_holding_lock != NULL) {
 
-        /* Store that current thread is waiting for this lock; For nested donation */
-        thread_current()->lock_on_waiting = lock;
+            /* Store that current thread is waiting for this lock; For nested donation */
+            thread_current()->lock_on_waiting = lock;
 
-        /* If current thread has higher priority than thread that is holding lock */
-        if (thread_current()->priority > thread_holding_lock->priority) {
+            /* If current thread has higher priority than thread that is holding lock */
+            if (thread_current()->priority > thread_holding_lock->priority) {
 
-            /* Lock is added to list of thread that is holding lock.
-             * Then sort the threads in donated list ascending order of priority */
-            list_push_front (&thread_holding_lock->list_donated_threads, &thread_current()->elem_for_donation);
-            list_sort(&thread_holding_lock->list_donated_threads, priority_less, NULL);
+                /* Lock is added to list of thread that is holding lock.
+                 * Then sort the threads in donated list ascending order of priority */
+                list_push_front(&thread_holding_lock->list_donated_threads, &thread_current()->elem_for_donation);
+                list_sort(&thread_holding_lock->list_donated_threads, priority_less, NULL);
 
-            /* Donation for nested locks */
-            struct thread* next_thread = thread_current()->lock_on_waiting->holder;
+                /* Donation for nested locks */
+                struct thread *next_thread = thread_current()->lock_on_waiting->holder;
 
-            /* Maximum nested depth is 8 */
-            for (int i=1; i <=8; i++) {
-                if (thread_current()->priority > next_thread->priority)
-                    next_thread->priority = thread_current()->priority;
+                /* Maximum nested depth is 8 */
+                for (int i = 1; i <= 8; i++) {
+                    if (thread_current()->priority > next_thread->priority)
+                        next_thread->priority = thread_current()->priority;
 
-                if (next_thread->lock_on_waiting != NULL)
-                    next_thread = next_thread->lock_on_waiting->holder;
-                else
-                    break;
+                    if (next_thread->lock_on_waiting != NULL)
+                        next_thread = next_thread->lock_on_waiting->holder;
+                    else
+                        break;
 
-                if (next_thread == NULL)
-                    break;
+                    if (next_thread == NULL)
+                        break;
+                }
             }
         }
     }
@@ -245,6 +249,7 @@ lock_acquire (struct lock *lock) {
 
     /* Since current thread has held the lock, remove waiting lock */
     thread_current()->lock_on_waiting = NULL;
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -278,36 +283,40 @@ lock_release (struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	lock->holder = NULL;
-
-    if (!list_empty(&thread_current()->list_donated_threads)) {
-        struct list_elem* current_list_elem;
-
-        /* Remove all threads that donated to current thread to release the lock */
-        current_list_elem = list_begin(&thread_current()->list_donated_threads);
-
-        while (current_list_elem != list_end(&thread_current()->list_donated_threads)) {
-            struct thread *target_thread = list_entry (current_list_elem, struct thread, elem_for_donation);
-            if (target_thread->lock_on_waiting == lock)
-                current_list_elem = list_remove(&target_thread->elem_for_donation);
-            else
-                current_list_elem = list_next (current_list_elem);
-        }
-
-        /* Reset priority due to lock release */
-        thread_current()->priority = thread_current()->original_priority;
-
+    if (!thread_mlfqs) {
         if (!list_empty(&thread_current()->list_donated_threads)) {
+            struct list_elem *current_list_elem;
 
+            /* Remove all threads that donated to current thread to release the lock */
             current_list_elem = list_begin(&thread_current()->list_donated_threads);
 
             while (current_list_elem != list_end(&thread_current()->list_donated_threads)) {
-                struct thread *target_thread = list_entry(current_list_elem, struct thread, elem_for_donation);
-                if (thread_current()->priority < target_thread->priority)
-                    thread_current()->priority = target_thread->priority;
-
-                current_list_elem = list_next(current_list_elem);
+                struct thread *target_thread = list_entry(current_list_elem,
+                struct thread, elem_for_donation);
+                if (target_thread->lock_on_waiting == lock) {
+                    current_list_elem = list_remove(&target_thread->elem_for_donation);
+                    target_thread->lock_on_waiting = NULL;
+                }
+                else
+                    current_list_elem = list_next(current_list_elem);
             }
 
+            /* Reset priority due to lock release */
+            thread_current()->priority = thread_current()->original_priority;
+
+            if (!list_empty(&thread_current()->list_donated_threads)) {
+
+                current_list_elem = list_begin(&thread_current()->list_donated_threads);
+
+                while (current_list_elem != list_end(&thread_current()->list_donated_threads)) {
+                    struct thread *target_thread = list_entry(current_list_elem,
+                    struct thread, elem_for_donation);
+                    if (thread_current()->priority < target_thread->priority)
+                        thread_current()->priority = target_thread->priority;
+
+                    current_list_elem = list_next(current_list_elem);
+                }
+            }
         }
     }
 

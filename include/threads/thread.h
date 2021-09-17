@@ -100,6 +100,13 @@ struct thread {
     struct list list_donated_threads;   /* List of donated threads to corresponding thread; For multiple donations */
     struct list_elem elem_for_donation; /* List element for donation */
 
+    int nice;                           /* Nice value of the corresponding thread */
+
+    /* REAL NUMBER */
+    int recent_cpu;                     /* Recent CPU value of the corresponding thread */
+
+    struct list_elem elem_for_pool;     /* List element for thread_pool */
+
  /* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
@@ -153,4 +160,8 @@ void do_iret (struct intr_frame *tf);
 
 bool priority_less (const struct list_elem*, const struct list_elem*, void*);
 
+int calculate_priority (int recent_cpu, int nice);
+
+/* Unlike `priority` and `recent_cpu`, `load_avg` is system-wide */
+int load_avg;
 #endif /* threads/thread.h */

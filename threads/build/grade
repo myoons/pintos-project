@@ -1,0 +1,466 @@
+TOTAL TESTING SCORE: 80.0%
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+SUMMARY BY TEST SET
+
+Test Set                                      Pts Max  % Ttl  % Max
+--------------------------------------------- --- --- ------ ------
+tests/threads/Rubric.alarm                      7/  7  20.0%/ 20.0%
+tests/threads/Rubric.priority                  25/ 25  50.0%/ 50.0%
+tests/threads/mlfqs/Rubric                      3/  9  10.0%/ 30.0%
+--------------------------------------------- --- --- ------ ------
+Total                                                  80.0%/100.0%
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+SUMMARY OF INDIVIDUAL TESTS
+
+Functionality and robustness of alarm clock (tests/threads/Rubric.alarm):
+	     1/ 1 tests/threads/alarm-single
+	     1/ 1 tests/threads/alarm-multiple
+	     1/ 1 tests/threads/alarm-simultaneous
+	     2/ 2 tests/threads/alarm-priority
+
+	     1/ 1 tests/threads/alarm-zero
+	     1/ 1 tests/threads/alarm-negative
+
+	- Section summary.
+	      6/  6 tests passed
+	      7/  7 points subtotal
+
+Functionality of priority scheduler (tests/threads/Rubric.priority):
+	     1/ 1 tests/threads/priority-change
+	     1/ 1 tests/threads/priority-preempt
+
+	     1/ 1 tests/threads/priority-fifo
+	     2/ 2 tests/threads/priority-sema
+	     2/ 2 tests/threads/priority-condvar
+
+	     2/ 2 tests/threads/priority-donate-one
+	     3/ 3 tests/threads/priority-donate-multiple
+	     3/ 3 tests/threads/priority-donate-multiple2
+	     3/ 3 tests/threads/priority-donate-nest
+	     3/ 3 tests/threads/priority-donate-chain
+	     2/ 2 tests/threads/priority-donate-sema
+	     2/ 2 tests/threads/priority-donate-lower
+
+	- Section summary.
+	     12/ 12 tests passed
+	     25/ 25 points subtotal
+
+Functionality of advanced scheduler (tests/threads/mlfqs/Rubric):
+	     1/ 1 tests/threads/mlfqs/mlfqs-load-1
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-load-60
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-load-avg
+
+	     1/ 1 tests/threads/mlfqs/mlfqs-recent-1
+
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-fair-2
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-fair-20
+
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-nice-2
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-nice-10
+
+	     1/ 1 tests/threads/mlfqs/mlfqs-block
+
+	- Section summary.
+	      3/  9 tests passed
+	      3/  9 points subtotal
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-load-60 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f
+Translation of call stack:
+0x0000008004214051: debug_panic (lib/kernel/debug.c:32)
+0x000000800420911d: intr_handler (threads/interrupt.c:365)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x000000800420dd53: timer_interrupt (devices/timer.c:152)
+0x00000080042090b1: intr_handler (threads/interrupt.c:352)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a8f: kernel_thread (threads/thread.c:608)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-load-60:
+
+Kernel command line: -q -mlfqs run mlfqs-load-60
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  209,510,400 loops/s.
+Boot complete.
+Executing 'mlfqs-load-60':
+(mlfqs-load-60) begin
+(mlfqs-load-60) Starting 60 niced load threads...
+(mlfqs-load-60) Starting threads took 0 seconds.
+(mlfqs-load-60) After 0 seconds, load average=0.00.
+(mlfqs-load-60) After 2 seconds, load average=1.98.
+(mlfqs-load-60) After 4 seconds, load average=3.90.
+(mlfqs-load-60) After 6 seconds, load average=5.75.
+(mlfqs-load-60) After 8 seconds, load average=7.55.
+(mlfqs-load-60) After 10 seconds, load average=9.28.
+(mlfqs-load-60) After 12 seconds, load average=10.95.
+(mlfqs-load-60) After 14 seconds, load average=12.57.
+(mlfqs-load-60) After 16 seconds, load average=14.14.
+(mlfqs-load-60) After 18 seconds, load average=15.65.
+(mlfqs-load-60) After 20 seconds, load average=17.12.
+(mlfqs-load-60) After 22 seconds, load average=18.53.
+(mlfqs-load-60) After 24 seconds, load average=19.90.
+(mlfqs-load-60) After 26 seconds, load average=21.22.
+(mlfqs-load-60) After 28 seconds, load average=22.50.
+(mlfqs-load-60) After 30 seconds, load average=23.74.
+(mlfqs-load-60) After 32 seconds, load average=24.93.
+(mlfqs-load-60) After 34 seconds, load average=26.09.
+(mlfqs-load-60) After 36 seconds, load average=27.21.
+(mlfqs-load-60) After 38 seconds, load average=28.29.
+(mlfqs-load-60) After 40 seconds, load average=29.33.
+(mlfqs-load-60) After 42 seconds, load average=30.34.
+(mlfqs-load-60) After 44 seconds, load average=31.32.
+(mlfqs-load-60) After 46 seconds, load average=32.26.
+(mlfqs-load-60) After 48 seconds, load average=33.17.
+(mlfqs-load-60) After 50 seconds, load average=34.06.
+(mlfqs-load-60) After 52 seconds, load average=34.91.
+(mlfqs-load-60) After 54 seconds, load average=35.73.
+(mlfqs-load-60) After 56 seconds, load average=36.53.
+(mlfqs-load-60) After 58 seconds, load average=37.30.
+(mlfqs-load-60) After 60 seconds, load average=38.05.
+(mlfqs-load-60) After 62 seconds, load average=36.79.
+(mlfqs-load-60) After 64 seconds, load average=35.57.
+(mlfqs-load-60) After 66 seconds, load average=34.39.
+(mlfqs-load-60) After 68 seconds, load average=33.25.
+(mlfqs-load-60) After 70 seconds, load average=32.14.
+(mlfqs-load-60) After 72 seconds, load average=31.08.
+(mlfqs-load-60) After 74 seconds, load average=30.05.
+(mlfqs-load-60) After 76 seconds, load average=29.05.
+(mlfqs-load-60) After 78 seconds, load average=28.09.
+(mlfqs-load-60) After 80 seconds, load average=27.15.
+(mlfqs-load-60) After 82 seconds, load average=26.25.
+(mlfqs-load-60) After 84 seconds, load average=25.38.
+(mlfqs-load-60) After 86 seconds, load average=24.54.
+(mlfqs-load-60) After 88 seconds, load average=23.73.
+(mlfqs-load-60) After 90 seconds, load average=22.94.
+(mlfqs-load-60) After 92 seconds, load average=22.18.
+(mlfqs-load-60) After 94 seconds, load average=21.44.
+(mlfqs-load-60) After 96 seconds, load average=20.73.
+(mlfqs-load-60) After 98 seconds, load average=20.04.
+(mlfqs-load-60) After 100 seconds, load average=19.38.
+(mlfqs-load-60) After 102 seconds, load average=18.74.
+(mlfqs-load-60) After 104 seconds, load average=18.11.
+(mlfqs-load-60) After 106 seconds, load average=17.51.
+(mlfqs-load-60) After 108 seconds, load average=16.93.
+(mlfqs-load-60) After 110 seconds, load average=16.37.
+(mlfqs-load-60) After 112 seconds, load average=15.83.
+(mlfqs-load-60) After 114 seconds, load average=15.30.
+(mlfqs-load-60) After 116 seconds, load average=14.80.
+(mlfqs-load-60) After 118 seconds, load average=14.30.
+(mlfqs-load-60) After 120 seconds, load average=13.83.
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004206e3a
+ cr2=0000000000000000 error=               0
+rax cccccccccccccc5c rbx 0000000000000000 rcx 0000000000000018 rdx 000000000000003f
+rsp 0000008004234e50 rbp 0000008004234e80 rsi 00000000cccccccc rdi 0000008004221aa0
+rip 0000008004206e3a r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000096
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 13024 ticks
+Thread: 7001 idle ticks, 6023 kernel ticks, 0 user ticks
+Console: 4
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-load-avg FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004208231 0x800420dbbd 0x800420dbdb 0x800421ad87 0x8004207a8f
+Translation of call stack:
+0x0000008004214051: debug_panic (lib/kernel/debug.c:32)
+0x000000800420911d: intr_handler (threads/interrupt.c:365)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x000000800420dd53: timer_interrupt (devices/timer.c:152)
+0x00000080042090b1: intr_handler (threads/interrupt.c:352)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x0000008004208231: intr_set_level (threads/interrupt.c:131 (discriminator 1))
+0x000000800420dbbd: timer_ticks (devices/timer.c:88)
+0x000000800420dbdb: timer_elapsed (devices/timer.c:95)
+0x000000800421ad87: load_thread (tests/threads/mlfqs/mlfqs-load-avg.c:164)
+0x0000008004207a8f: kernel_thread (threads/thread.c:608)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-load-avg:
+
+Kernel command line: -q -mlfqs run mlfqs-load-avg
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  209,510,400 loops/s.
+Boot complete.
+Executing 'mlfqs-load-avg':
+(mlfqs-load-avg) begin
+(mlfqs-load-avg) Starting 60 load threads...
+(mlfqs-load-avg) Starting threads took 0 seconds.
+(mlfqs-load-avg) After 0 seconds, load average=0.00.
+(mlfqs-load-avg) After 2 seconds, load average=0.05.
+(mlfqs-load-avg) After 4 seconds, load average=0.16.
+(mlfqs-load-avg) After 6 seconds, load average=0.34.
+(mlfqs-load-avg) After 8 seconds, load average=0.58.
+(mlfqs-load-avg) After 10 seconds, load average=0.87.
+(mlfqs-load-avg) After 12 seconds, load average=1.22.
+(mlfqs-load-avg) After 14 seconds, load average=1.63.
+(mlfqs-load-avg) After 16 seconds, load average=2.09.
+(mlfqs-load-avg) After 18 seconds, load average=2.60.
+(mlfqs-load-avg) After 20 seconds, load average=3.15.
+(mlfqs-load-avg) After 22 seconds, load average=3.76.
+(mlfqs-load-avg) After 24 seconds, load average=4.41.
+(mlfqs-load-avg) After 26 seconds, load average=5.11.
+(mlfqs-load-avg) After 28 seconds, load average=5.85.
+(mlfqs-load-avg) After 30 seconds, load average=6.63.
+(mlfqs-load-avg) After 32 seconds, load average=7.45.
+(mlfqs-load-avg) After 34 seconds, load average=8.31.
+(mlfqs-load-avg) After 36 seconds, load average=9.21.
+(mlfqs-load-avg) After 38 seconds, load average=10.14.
+(mlfqs-load-avg) After 40 seconds, load average=11.11.
+(mlfqs-load-avg) After 42 seconds, load average=12.11.
+(mlfqs-load-avg) After 44 seconds, load average=13.15.
+(mlfqs-load-avg) After 46 seconds, load average=14.22.
+(mlfqs-load-avg) After 48 seconds, load average=15.32.
+(mlfqs-load-avg) After 50 seconds, load average=16.44.
+(mlfqs-load-avg) After 52 seconds, load average=17.60.
+(mlfqs-load-avg) After 54 seconds, load average=18.78.
+(mlfqs-load-avg) After 56 seconds, load average=20.00.
+(mlfqs-load-avg) After 58 seconds, load average=21.23.
+(mlfqs-load-avg) After 60 seconds, load average=22.49.
+(mlfqs-load-avg) After 62 seconds, load average=23.71.
+(mlfqs-load-avg) After 64 seconds, load average=24.84.
+(mlfqs-load-avg) After 66 seconds, load average=25.87.
+(mlfqs-load-avg) After 68 seconds, load average=26.81.
+(mlfqs-load-avg) After 70 seconds, load average=27.64.
+(mlfqs-load-avg) After 72 seconds, load average=28.34.
+(mlfqs-load-avg) After 74 seconds, load average=28.97.
+(mlfqs-load-avg) After 76 seconds, load average=29.52.
+(mlfqs-load-avg) After 78 seconds, load average=29.96.
+(mlfqs-load-avg) After 80 seconds, load average=30.34.
+(mlfqs-load-avg) After 82 seconds, load average=30.62.
+(mlfqs-load-avg) After 84 seconds, load average=30.84.
+(mlfqs-load-avg) After 86 seconds, load average=30.99.
+(mlfqs-load-avg) After 88 seconds, load average=31.07.
+(mlfqs-load-avg) After 90 seconds, load average=31.05.
+(mlfqs-load-avg) After 92 seconds, load average=30.98.
+(mlfqs-load-avg) After 94 seconds, load average=30.86.
+(mlfqs-load-avg) After 96 seconds, load average=30.64.
+(mlfqs-load-avg) After 98 seconds, load average=30.39.
+(mlfqs-load-avg) After 100 seconds, load average=30.06.
+(mlfqs-load-avg) After 102 seconds, load average=29.69.
+(mlfqs-load-avg) After 104 seconds, load average=29.26.
+(mlfqs-load-avg) After 106 seconds, load average=28.79.
+(mlfqs-load-avg) After 108 seconds, load average=28.25.
+(mlfqs-load-avg) After 110 seconds, load average=27.66.
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004206e3a
+ cr2=0000000000000000 error=               0
+rax cccccccccccccc5c rbx 0000000000001a2b rcx 0000000000000018 rdx 000000000000003f
+rsp 000000800426edc0 rbp 000000800426edf0 rsi 00000000cccccccc rdi 0000008004221aa0
+rip 0000008004206e3a r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000096
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004208231 0x800420dbbd 0x800420dbdb 0x800421ad87 0x8004207a8f.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 12024 ticks
+Thread: 999 idle ticks, 11025 kernel ticks, 0 user ticks
+Console: 4
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-fair-2 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f
+Translation of call stack:
+0x0000008004214051: debug_panic (lib/kernel/debug.c:32)
+0x000000800420911d: intr_handler (threads/interrupt.c:365)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x000000800420dd53: timer_interrupt (devices/timer.c:152)
+0x00000080042090b1: intr_handler (threads/interrupt.c:352)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a8f: kernel_thread (threads/thread.c:608)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-fair-2:
+
+Kernel command line: -q -mlfqs run mlfqs-fair-2
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  209,510,400 loops/s.
+Boot complete.
+Executing 'mlfqs-fair-2':
+(mlfqs-fair-2) begin
+(mlfqs-fair-2) Starting 2 threads...
+(mlfqs-fair-2) Starting threads took 0 ticks.
+(mlfqs-fair-2) Sleeping 40 seconds to let threads run, please wait...
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004206e3a
+ cr2=0000000000000000 error=               0
+rax cccccccccccccc5c rbx 0000000000000000 rcx 0000000000000018 rdx 000000000000003f
+rsp 0000008004234e50 rbp 0000008004234e80 rsi 00000000cccccccc rdi 0000008004221aa0
+rip 0000008004206e3a r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000096
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 3524 ticks
+Thread: 503 idle ticks, 3021 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-fair-20 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f
+Translation of call stack:
+0x0000008004214051: debug_panic (lib/kernel/debug.c:32)
+0x000000800420911d: intr_handler (threads/interrupt.c:365)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x000000800420dd53: timer_interrupt (devices/timer.c:152)
+0x00000080042090b1: intr_handler (threads/interrupt.c:352)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a8f: kernel_thread (threads/thread.c:608)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-fair-20:
+
+Kernel command line: -q -mlfqs run mlfqs-fair-20
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  209,510,400 loops/s.
+Boot complete.
+Executing 'mlfqs-fair-20':
+(mlfqs-fair-20) begin
+(mlfqs-fair-20) Starting 20 threads...
+(mlfqs-fair-20) Starting threads took 1 ticks.
+(mlfqs-fair-20) Sleeping 40 seconds to let threads run, please wait...
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004206e3a
+ cr2=0000000000000000 error=               0
+rax cccccccccccccc5c rbx 0000000000000000 rcx 0000000000000018 rdx 000000000000003f
+rsp 0000008004234e50 rbp 0000008004234e80 rsi 00000000cccccccc rdi 0000008004221aa0
+rip 0000008004206e3a r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000096
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 3524 ticks
+Thread: 502 idle ticks, 3022 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-nice-2 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f
+Translation of call stack:
+0x0000008004214051: debug_panic (lib/kernel/debug.c:32)
+0x000000800420911d: intr_handler (threads/interrupt.c:365)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x000000800420dd53: timer_interrupt (devices/timer.c:152)
+0x00000080042090b1: intr_handler (threads/interrupt.c:352)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a8f: kernel_thread (threads/thread.c:608)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-nice-2:
+
+Kernel command line: -q -mlfqs run mlfqs-nice-2
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  209,510,400 loops/s.
+Boot complete.
+Executing 'mlfqs-nice-2':
+(mlfqs-nice-2) begin
+(mlfqs-nice-2) Starting 2 threads...
+(mlfqs-nice-2) Starting threads took 0 ticks.
+(mlfqs-nice-2) Sleeping 40 seconds to let threads run, please wait...
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004206e3a
+ cr2=0000000000000000 error=               0
+rax cccccccccccccc5c rbx 0000000000000000 rcx 0000000000000018 rdx 000000000000003f
+rsp 0000008004234e50 rbp 0000008004234e80 rsi 00000000cccccccc rdi 0000008004221aa0
+rip 0000008004206e3a r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000096
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 3524 ticks
+Thread: 503 idle ticks, 3021 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-nice-10 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f
+Translation of call stack:
+0x0000008004214051: debug_panic (lib/kernel/debug.c:32)
+0x000000800420911d: intr_handler (threads/interrupt.c:365)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x000000800420dd53: timer_interrupt (devices/timer.c:152)
+0x00000080042090b1: intr_handler (threads/interrupt.c:352)
+0x00000080042094cf: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a8f: kernel_thread (threads/thread.c:608)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-nice-10:
+
+Kernel command line: -q -mlfqs run mlfqs-nice-10
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  215,859,200 loops/s.
+Boot complete.
+Executing 'mlfqs-nice-10':
+(mlfqs-nice-10) begin
+(mlfqs-nice-10) Starting 10 threads...
+(mlfqs-nice-10) Starting threads took 0 ticks.
+(mlfqs-nice-10) Sleeping 40 seconds to let threads run, please wait...
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004206e3a
+ cr2=0000000000000000 error=               0
+rax cccccccccccccc5c rbx 0000000000000000 rcx 0000000000000020 rdx 000000000000003f
+rsp 0000008004234e50 rbp 0000008004234e80 rsi 00000000cccccccc rdi 0000008004221aa0
+rip 0000008004206e3a r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000096
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x8004214051 0x800420911d 0x80042094cf 0x800420dd53 0x80042090b1 0x80042094cf 0x8004207a8f.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 3532 ticks
+Thread: 503 idle ticks, 3029 kernel ticks, 0 user ticks
+Console: 1
