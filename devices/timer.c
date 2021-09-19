@@ -155,19 +155,19 @@ timer_interrupt (struct intr_frame *args UNUSED) {
          * recent_cpu is incremented by 1 for the running thread */
         mlfqs_increment_cpu();
 
-        /* Once every fourth clock tick,
-         * priority is recalculated for every thread. */
-        if (ticks % 4 == 0) {
-            mlfqs_recalculate_priority();
-        }
-
 		/* Once per second (per TIMER_FREQ),
 		* the value of recent_cpu is recalculated for every thread */
 		if (ticks % TIMER_FREQ == 0) {
 			mlfqs_load_avg();
 			mlfqs_recalculate_cpu();
 		}
-
+		
+		 /* Once every fourth clock tick,
+         * priority is recalculated for every thread. */
+        if (ticks % 4 == 0) {
+            mlfqs_recalculate_priority();
+        }
+		
     }
 
     if (!list_empty(&block_list)) {

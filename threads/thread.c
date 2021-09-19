@@ -104,6 +104,8 @@ static tid_t allocate_tid (void);
 // setup temporal gdt first.
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
+
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -141,8 +143,6 @@ thread_init (void) {
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid ();
-	initial_thread->nice = 0;
-	initial_thread->recent_cpu = 0;
 
 }
 
@@ -169,7 +169,7 @@ thread_start (void) {
 int
 mlfqs_priority (int recent_cpu, int nice) {
 	int temp, priority;
-	temp = PRI_MAX - (recent_cpu / 4) - (nice * 2);
+	temp = (recent_cpu / -4) + (PRI_MAX - (nice * 2)) * FRACTION;
 
 	if (thread_current() == idle_thread) 
 		return thread_current()->priority;
@@ -190,25 +190,8 @@ mlfqs_priority (int recent_cpu, int nice) {
 		return priority;
 	}
 
-    // int temp, out;
-
-    // enum intr_level old_level = intr_disable();
-
-    // if (recent_cpu / 4 >= 0)
-    //     temp = ((recent_cpu / 4) + (FRACTION / 2)) / FRACTION;
-    // else
-    //     temp = ((recent_cpu / 4) - FRACTION / 2) / FRACTION;
-
-    // out = PRI_MAX - temp - (nice * 2);
-
-    // if (out > PRI_MAX)
-    //     out = PRI_MAX;
-    // else if (out < PRI_MIN)
-    //     out = PRI_MIN;
-
-    // intr_set_level(old_level);
-    // return out;
 }
+
 
 int
 mlfqs_recent_cpu (int recent_cpu, int nice) {
@@ -217,16 +200,10 @@ mlfqs_recent_cpu (int recent_cpu, int nice) {
 	if (thread_current() == idle_thread) 
 		return thread_current()->recent_cpu;
 	else {
-		coefficient = (((int64_t) (2 * load_avg)) * FRACTION) / (2 * load_avg + 1 * FRACTION);
+		coefficient = (((int64_t)(2 * load_avg)) * FRACTION) / (2 * load_avg + 1 * FRACTION);
 		return ((((int64_t) coefficient) * recent_cpu) / FRACTION) + nice * FRACTION;
 	}
-	
-
-    // enum intr_level old_level = intr_disable();
-
-    // coefficient = (((int64_t) (2 * load_avg)) * FRACTION) / (2 * load_avg + FRACTION);
-    // intr_set_level(old_level);
-    // return ((((int64_t) coefficient) * recent_cpu) / FRACTION) + nice * FRACTION;
+    
 }
 
 int
@@ -239,15 +216,10 @@ mlfqs_load_avg (void) {
 	else 
 		n_threads = list_size(&ready_list) + 1;
 
-	load_avg = (((int64_t) ((59 * FRACTION) / 60)) * load_avg / FRACTION) + (FRACTION / 60) * n_threads;
-    // enum intr_level old_level = intr_disable();
-
-    // n_threads = list_size(&ready_list);
-    // if (thread_current() != idle_thread)
-    //     n_threads++;
-
-    // intr_set_level(old_level);
-    // return (((int64_t) ((59 * FRACTION) / 60)) * load_avg / FRACTION) + (FRACTION / 60) * n_threads;
+	load_avg = (((int64_t)((int64_t)(59 * FRACTION) * FRACTION / (60 * FRACTION))) * load_avg / FRACTION) 
+				+ ((((int64_t)(1 * FRACTION)) * FRACTION / (60 * FRACTION)) * n_threads);
+	// load_avg = (((int64_t) ((59 * FRACTION) / 60 * FRACTION)) * load_avg / FRACTION) + (FRACTION / 60) * n_threads;
+    
 }
 
 void 
@@ -555,34 +527,30 @@ thread_set_nice (int nice) {
 
     enum intr_level old_level = intr_disable();
 
-    if (thread_mlfqs) {
 
-        thread_current()->nice = nice;
+	thread_current()->nice = nice;
 
-        /* Recalculate the thread's priority based on the new value. */
-		thread_current()->priority = mlfqs_priority(thread_current()->recent_cpu, nice);
-        // if (thread_current() != idle_thread) {
-        //     thread_current()->recent_cpu = mlfqs_recent_cpu(thread_current()->recent_cpu, nice);
-        //     thread_current()->priority = mlfqs_priority(thread_current()->recent_cpu, nice);
-        // }
+	/* Recalculate the thread's priority based on the new value. */
+	thread_current()->priority = mlfqs_priority(thread_current()->recent_cpu, nice);
+	
 
-        /* If there is any thread that has higher priority than new_priority, Yield */
-        if (!list_empty(&ready_list)) {
-            current_list_elem = list_begin(&ready_list);
-			new_priority = thread_current()->priority;
+	/* If there is any thread that has higher priority than new_priority, Yield */
+	if (!list_empty(&ready_list)) {
+		// current_list_elem = list_begin(&ready_list);
+		new_priority = thread_current()->priority;
 
-			if (new_priority < list_entry(list_back(&ready_list), struct thread, elem)->priority)
-				thread_yield();
-            // while (current_list_elem != list_end(&ready_list)) {
-            //     struct thread *target_thread = list_entry (current_list_elem, struct thread, elem);
-            //     if (new_priority < target_thread->priority) {
-            //         thread_yield();
-            //         break;
-            //     }
-            //     current_list_elem = list_next(current_list_elem);
-            // }
-        }
-    }
+		if (new_priority < list_entry(list_back(&ready_list), struct thread, elem)->priority)
+			thread_yield();
+		// while (current_list_elem != list_end(&ready_list)) {
+		//     struct thread *target_thread = list_entry (current_list_elem, struct thread, elem);
+		//     if (new_priority < target_thread->priority) {
+		//         thread_yield();
+		//         break;
+		//     }
+		//     current_list_elem = list_next(current_list_elem);
+		// }
+	}
+
 
     intr_set_level (old_level);
 }
@@ -591,7 +559,7 @@ thread_set_nice (int nice) {
 int
 thread_get_nice (void) {
 	enum intr_level old_level = intr_disable();
-	int nice = thread_current() -> nice;
+	int nice = thread_current()->nice;
 	intr_set_level(old_level);
 
 	return nice;
