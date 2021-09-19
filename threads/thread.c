@@ -174,20 +174,17 @@ mlfqs_priority (int recent_cpu, int nice) {
 	if (thread_current() == idle_thread) 
 		return thread_current()->priority;
 	else {
-		if (temp > PRI_MAX) 
-			priority = PRI_MAX;
+		if (temp >= 0)
+            priority = (temp + FRACTION / 2) / FRACTION;
+        else
+            priority = (temp - FRACTION / 2) / FRACTION;
 
-		else if (temp < PRI_MIN) 
-			priority = PRI_MIN;
-		
-		else {
-			if (temp >= 0) 
-				priority = (temp + FRACTION / 2) / FRACTION;
-			else 
-				priority = (temp - FRACTION / 2) / FRACTION;
-		}
+        if (priority > PRI_MAX)
+            priority = PRI_MAX;
+        else if (priority < PRI_MIN)
+            priority = PRI_MIN;
 
-		return priority;
+        return priority;
 	}
 
 }
@@ -206,7 +203,7 @@ mlfqs_recent_cpu (int recent_cpu, int nice) {
     
 }
 
-int
+void
 mlfqs_load_avg (void) {
     /* Number of threads that are either running or ready
      * to run at time of update (not including the idle thread).*/
@@ -218,14 +215,12 @@ mlfqs_load_avg (void) {
 
 	load_avg = (((int64_t)((int64_t)(59 * FRACTION) * FRACTION / (60 * FRACTION))) * load_avg / FRACTION) 
 				+ ((((int64_t)(1 * FRACTION)) * FRACTION / (60 * FRACTION)) * n_threads);
-	// load_avg = (((int64_t) ((59 * FRACTION) / 60 * FRACTION)) * load_avg / FRACTION) + (FRACTION / 60) * n_threads;
-    
 }
 
 void 
 mlfqs_increment_cpu (void) {
-	if (thread_current() != idle_thread) 
-		thread_current()->recent_cpu = thread_current()->recent_cpu + 1 * FRACTION;
+    if (thread_current() != idle_thread)
+        thread_current()->recent_cpu = thread_current()->recent_cpu + 1 * FRACTION;
 }
 
 void 
@@ -338,24 +333,25 @@ thread_create (const char *name, int priority,
 
     intr_set_level (old_level);
 
-    /* TODO */
-    // if (thread_mlfqs) {
-    //     if (thread_current() != idle_thread) {
-    //         t->nice = thread_current()->nice;
-    //         t->recent_cpu = mlfqs_recent_cpu(thread_current()->recent_cpu, thread_current()->nice);
-    //         t->priority = mlfqs_priority(thread_current()->recent_cpu, thread_current()->nice);
-    //     }
-    // }
+     if (thread_mlfqs && t != idle_thread) {
+         if (t == initial_thread) {
+             t->nice = 0;
+             t->recent_cpu = 0;
+             t->priority = mlfqs_priority(t->recent_cpu, t->nice);
+         }
+         else {
+             t->nice = thread_current()->nice;
+             t->recent_cpu = thread_current()->recent_cpu;
+             t->priority = mlfqs_priority(t->recent_cpu, t->nice);
+         }
+     }
 
 	/* Add to run queue. */
 	thread_unblock (t);
 
     /* If created thread has higher priority than current thread, yield cpu */
-	
-    if (!thread_mlfqs) {
-		if (thread_current()->priority < t->priority)
+    if (thread_current()->priority < t->priority)
         thread_yield();
-	}
 
 	return tid;
 }
@@ -444,19 +440,6 @@ thread_exit (void) {
 	intr_disable ();
 	list_remove(&thread_current()->elem_for_pool);
 
-	// struct list_elem* current_list_elem;
-	// if (!list_empty(&thread_pool)) {
-	// 	current_list_elem = list_begin(&thread_pool);
-	// 	while (current_list_elem != list_end(&thread_pool)) {
-	// 		struct thread *target_thread = list_entry(current_list_elem, struct thread, elem);
-	// 		if (target_thread->tid == thread_current()->tid) {
-	// 			current_list_elem->prev->next = current_list_elem->next;
-	// 			current_list_elem->next->prev = current_list_elem->prev;
-	// 			break;
-	// 		}
-	// 		current_list_elem = list_next(current_list_elem);
-	// 	}
-	// }
 	do_schedule (THREAD_DYING);
 
 	NOT_REACHED ();
@@ -522,37 +505,19 @@ thread_get_priority (void) {
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice) {
-    struct list_elem* current_list_elem;
-    int new_priority;
-
-    enum intr_level old_level = intr_disable();
-
-
 	thread_current()->nice = nice;
 
 	/* Recalculate the thread's priority based on the new value. */
+    thread_current()->recent_cpu = mlfqs_recent_cpu(thread_current()->recent_cpu, nice);
 	thread_current()->priority = mlfqs_priority(thread_current()->recent_cpu, nice);
-	
 
 	/* If there is any thread that has higher priority than new_priority, Yield */
 	if (!list_empty(&ready_list)) {
-		// current_list_elem = list_begin(&ready_list);
-		new_priority = thread_current()->priority;
+        list_sort (&ready_list, priority_less, NULL);
 
-		if (new_priority < list_entry(list_back(&ready_list), struct thread, elem)->priority)
+		if (thread_current()->priority < list_entry(list_back(&ready_list), struct thread, elem)->priority)
 			thread_yield();
-		// while (current_list_elem != list_end(&ready_list)) {
-		//     struct thread *target_thread = list_entry (current_list_elem, struct thread, elem);
-		//     if (new_priority < target_thread->priority) {
-		//         thread_yield();
-		//         break;
-		//     }
-		//     current_list_elem = list_next(current_list_elem);
-		// }
 	}
-
-
-    intr_set_level (old_level);
 }
 
 /* Returns the current thread's nice value. */
@@ -589,8 +554,6 @@ int
 thread_get_recent_cpu (void) {
     int temp, cpu;
 
-	enum intr_level old_level = intr_disable();
-
     temp = thread_current()->recent_cpu * 100;
 
     if (temp >= 0)
@@ -598,8 +561,6 @@ thread_get_recent_cpu (void) {
     else
         cpu = (temp - FRACTION / 2) / FRACTION;
 	
-	intr_set_level(old_level);
-
 	return cpu;
 }
 
@@ -674,17 +635,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 
     /* Initialize list of donated threads */
     list_init(&t->list_donated_threads);
-
-    // if (thread_mlfqs) {
-    //     if (t == initial_thread) {
-    //         t->recent_cpu = 0;
-    //         t->nice = 0;
-    //     }
-    //     else {
-    //         t->recent_cpu = thread_current()->recent_cpu;
-    //         t->nice = thread_get_nice();
-    //     }
-    // }
 
     /* Add to thread pool */
     list_push_front (&thread_pool, &t->elem_for_pool);

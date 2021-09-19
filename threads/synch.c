@@ -109,12 +109,14 @@ sema_try_down (struct semaphore *sema) {
    This function may be called from an interrupt handler. */
 void
 sema_up (struct semaphore *sema) {
-	enum intr_level old_level;
+    enum intr_level old_level;
     struct thread* max_priority_waiter;
 
-	ASSERT (sema != NULL);
+    ASSERT (sema != NULL);
 
-	old_level = intr_disable ();
+    old_level = intr_disable ();
+
+    sema->value++;
 
     if (!list_empty (&sema->waiters)) {
 
@@ -125,12 +127,11 @@ sema_up (struct semaphore *sema) {
         /* Since waiting list is sorted ascending order of priority,
          * pop thread from the back of waiting list which has the highest priority */
         thread_unblock(max_priority_waiter);
+
+        /* Yield */
+        if (max_priority_waiter->priority > thread_current()->priority)
+            thread_yield();
     }
-
-    sema->value++;
-
-    /* Yield */
-    thread_yield();
 
     intr_set_level (old_level);
 }
