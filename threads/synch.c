@@ -127,10 +127,6 @@ sema_up (struct semaphore *sema) {
         /* Since waiting list is sorted ascending order of priority,
          * pop thread from the back of waiting list which has the highest priority */
         thread_unblock(max_priority_waiter);
-
-        /* Yield */
-        if (max_priority_waiter->priority > thread_current()->priority)
-            thread_yield();
     }
 
     intr_set_level (old_level);
