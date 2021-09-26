@@ -164,9 +164,9 @@ char *
 parse_argument(const char *file_name, struct intr_frame *if_) {
 	char *token, *save_ptr;
 	char *parsed_file_name; 
-	int count; 
-	struct list args;
-	struct list args_address;
+	int count; //value for argc
+	struct list args; //list for argv[i][...]
+	struct list args_address; //list for argv[i]
 
 	count = 0; 
 	if_->esp = USER_STACK;
@@ -186,6 +186,7 @@ parse_argument(const char *file_name, struct intr_frame *if_) {
 			strlcpy(dest, list_pop_back(&args)+j, 1);
 			*(char **)(if_->esp) = dest;
 
+			//push starting address of argv[i][...]
 			if (j==0) 
 				list_push_back(&args_address, if_->esp);
 		}
@@ -194,16 +195,17 @@ parse_argument(const char *file_name, struct intr_frame *if_) {
 	//  round the stack pointer down to a multiple of 8 before the first push
 	ROUND_DOWN(if_->esp, 8);
 
-	// Push the address of each string plus a null pointer sentinel, on the stack, 
-	// in right-to-left order
+	// Push the address on the stack, in right-to-left order (stack grow downward)
 	for (int i = count; i > -1; i--) {
 		if (i == count) {
+			// 예시에 argv[4] 때문에 추가해뒀는데 왜 있는건지 모르겠음
 			if_->esp = if_->esp - 8;
 			*(char *)(if_->esp) = NULL;
 		}
 		else {
 			if_->esp = if_->esp - 8;
 			*(char *)(if_->esp) = list_pop_front(&args_address);
+
 			// Point %rsi to the address of argv[0] and set %rdi to argc
 			if (i == 0) {
 				if_->R.rsi = if_->esp;
