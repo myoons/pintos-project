@@ -333,6 +333,6 @@ bitmap_write (const struct bitmap *b, struct file *file) {
 /* Dumps the contents of B to the console as hexadecimal. */
 void
 bitmap_dump (const struct bitmap *b) {
-	hex_dump (0, b->bits, byte_cnt (b->bit_cnt), false);
+	 (0, b->bits, byte_cnt (b->bit_cnt), false);
 }
 

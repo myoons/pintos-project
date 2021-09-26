@@ -158,11 +158,77 @@ error:
 	thread_exit ();
 }
 
+
+// function for parsing arguments
+char *
+parse_argument(const char *file_name, struct intr_frame *if_) {
+	char *token, *save_ptr;
+	char *parsed_file_name; 
+	int count; 
+	struct list args;
+	struct list args_address;
+
+	count = 0; 
+	if_->esp = USER_STACK;
+
+	// Break the command into words & push into args list
+	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+		if (count == 0) parsed_file_name = token;
+		list_push_back(&args, token);
+		count ++; //argc count 
+	}
+
+	// Place the words at the top of the stack
+	for (int i = count; i > 0; i--) {
+		for (int j = strlen(list_pop_back(&args)); j > -1; j--) {
+			if_->esp = if_->esp - 1;
+			char * dest;
+			strlcpy(dest, list_pop_back(&args)+j, 1);
+			*(char **)(if_->esp) = dest;
+
+			if (j==0) 
+				list_push_back(&args_address, if_->esp);
+		}
+	}
+
+	//  round the stack pointer down to a multiple of 8 before the first push
+	ROUND_DOWN(if_->esp, 8);
+
+	// Push the address of each string plus a null pointer sentinel, on the stack, 
+	// in right-to-left order
+	for (int i = count; i > -1; i--) {
+		if (i == count) {
+			if_->esp = if_->esp - 8;
+			*(char *)(if_->esp) = NULL;
+		}
+		else {
+			if_->esp = if_->esp - 8;
+			*(char *)(if_->esp) = list_pop_front(&args_address);
+			// Point %rsi to the address of argv[0] and set %rdi to argc
+			if (i == 0) {
+				if_->R.rsi = if_->esp;
+				if_->R.rdi = count;
+			}
+		}
+	} 
+
+	//  push a fake "return address" 
+	if_->esp = if_->esp - 8;
+	*(char *)(if_->esp) = NULL;
+
+	// return file name 
+	return parsed_file_name;
+
+}
+
+
+
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int
 process_exec (void *f_name) {
 	char *file_name = f_name;
+	char *parsed_file_name;
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
@@ -176,14 +242,21 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+	// parse argument to stack & get file name 
+	parsed_file_name = parse_argument(file_name, &_if);
+
+	// debugging purpose 
+	hex_dump(_if.esp, _if.esp, KERN_BASE-_if.esp, true);
+
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (parsed_file_name, &_if);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
 
+	
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();

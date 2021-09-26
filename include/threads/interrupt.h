@@ -61,6 +61,10 @@ struct intr_frame {
 	uint16_t ss;
 	uint16_t __pad7;
 	uint32_t __pad8;
+
+// proj2 argument passing
+	uintptr_t esp;	// stack pointer
+
 } __attribute__((packed));
 
 typedef void intr_handler_func (struct intr_frame *);
