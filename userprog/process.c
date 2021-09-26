@@ -159,7 +159,7 @@ error:
 }
 
 
-// function for parsing arguments
+// function for parsing arguments & return file name 
 char *
 parse_argument(const char *file_name, struct intr_frame *if_) {
 	char *token, *save_ptr;

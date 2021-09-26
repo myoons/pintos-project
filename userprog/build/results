@@ -75,7 +75,7 @@ FAIL tests/filesys/base/syn-read
 FAIL tests/filesys/base/syn-remove
 FAIL tests/filesys/base/syn-write
 FAIL tests/userprog/no-vm/multi-oom
-FAIL tests/threads/alarm-single
+pass tests/threads/alarm-single
 FAIL tests/threads/alarm-multiple
 FAIL tests/threads/alarm-simultaneous
 FAIL tests/threads/alarm-priority
@@ -90,6 +90,6 @@ FAIL tests/threads/priority-donate-sema
 FAIL tests/threads/priority-donate-lower
 FAIL tests/threads/priority-fifo
 FAIL tests/threads/priority-preempt
-FAIL tests/threads/priority-sema
+pass tests/threads/priority-sema
 FAIL tests/threads/priority-condvar
 FAIL tests/threads/priority-donate-chain
