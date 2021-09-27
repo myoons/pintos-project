@@ -42,7 +42,6 @@ tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
 	tid_t tid;
-
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
 	fn_copy = palloc_get_page (0);
@@ -335,10 +334,21 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	process_activate (thread_current ());
 
-	/* Open executable file. */
-	file = filesys_open (file_name);
+
+    /* Copy file name for parsing; It should not affect other jobs using file_name */
+    char user_program[128];
+    strlcpy(user_program, file_name, strlen(file_name) + 1);
+
+    /* Parse the command line; First argument is name of user program */
+    int pos = 0;
+    while (user_program[pos] != ' ' && user_program[pos] != '\0')
+        pos ++;
+    user_program[pos] = '\0';
+
+    /* Open executable file. */
+	file = filesys_open (user_program);
 	if (file == NULL) {
-		printf ("load: %s: open failed\n", file_name);
+		printf ("load: %s: open failed\n", user_program);
 		goto done;
 	}
 
@@ -414,10 +424,97 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 
-	/* TODO: Your code goes here.
-	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+    /* Implementation Start */
 
-	success = true;
+    /* Copy file name for parsing; It should not affect other jobs using file_name. */
+    char file_name_copy[128];
+    strlcpy(file_name_copy, file_name, strlen(file_name) + 1);
+
+    /* Parse command line to count number of arguments and get. */
+    char* arg;
+    char* save_ptr;
+
+    int argc = 0;
+    arg = strtok_r (file_name_copy, " ", &save_ptr);
+    while (arg != NULL) {
+        argc++;
+        arg = strtok_r(NULL, " ", &save_ptr);
+    }
+
+    strlcpy(file_name_copy, file_name, strlen(file_name) + 1);
+
+    pos = -1;
+    char** argv;
+    arg = strtok_r (file_name_copy, " ", &save_ptr);
+    argv = (char**) malloc(sizeof(char*)  * argc);
+    while (arg != NULL) {
+        pos++;
+
+        /* Store the argument. */
+        argv[pos] = arg;
+
+        /* Next argument. */
+        arg = strtok_r (NULL, " ", &save_ptr);
+    }
+
+    int arg_len;
+    int args_total_length = 0;
+    while (pos >= 0) {
+        /* Target argument. */
+        arg = argv[pos];
+
+        /* Length of argument with \0. */
+        arg_len = strlen(arg) + 1;
+
+        /* Make space to store argument. */
+        if_->rsp -= arg_len;
+
+        /* Push argument. */
+        strlcpy(if_->rsp, arg, arg_len);
+
+        /* Store the address of argument. */
+        argv[pos] = if_->rsp;
+
+        /* Calculate total length of arguments to align the stack. */
+        args_total_length += arg_len;
+
+        /* Next argument. */
+        pos--;
+    }
+
+
+    /* Push word align. */
+    int remain = args_total_length % 8;
+    if (remain > 0)
+        if_->rsp -= 8 - remain;
+
+    /* Push NULL pointer. */
+    if_->rsp -= 8;
+    *(uint64_t*) if_->rsp = 0;
+
+    /* Push address of arguments. */
+    while ((argc + pos) >= 0) {
+
+        /* Address of target argument. */
+        arg = argv[argc + pos];
+
+        /* Make space to store address of argument. */
+        if_->rsp -= 8;
+
+        /* Push argument. */
+        *(uint64_t*) if_->rsp = arg;
+
+        /* Next argument. */
+        pos--;
+    }
+
+    /* Push return address. */
+    if_->rsp -= 8;
+    *(uint64_t*) if_->rsp = 0;
+
+    /* Implementation End */
+
+    success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */
@@ -544,7 +641,7 @@ setup_stack (struct intr_frame *if_) {
 	if (kpage != NULL) {
 		success = install_page (((uint8_t *) USER_STACK) - PGSIZE, kpage, true);
 		if (success)
-			if_->rsp = USER_STACK;
+			if_->rsp = USER_STACK;  // 0x47480000
 		else
 			palloc_free_page (kpage);
 	}
