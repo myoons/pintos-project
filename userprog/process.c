@@ -131,7 +131,7 @@ __do_fork (void *aux) {
 	current->pml4 = pml4_create();
 	if (current->pml4 == NULL)
 		goto error;
-
+    printf("process.c line 134.\n");
 	process_activate (current);
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
@@ -426,18 +426,30 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 
-    /* Implementation Start */
+    /* Address of stack pointer. */
+    void** rsp = &(*if_).rsp;
+    push_arguments(file_name, rsp, if_);
+    success = true;
+
+done:
+	/* We arrive here whether the load is successful or not. */
+	file_close (file);
+	return success;
+}
+
+
+void push_arguments(char* file_name, void** rsp, struct intr_frame *if_) {
 
     /* Copy file name for parsing; It should not affect other jobs using file_name. */
     char file_name_copy[128];
     strlcpy(file_name_copy, file_name, strlen(file_name) + 1);
 
     /* Parse command line to count number of arguments and get. */
-    char* arg;
-    char* save_ptr;
+    char *arg;
+    char *save_ptr;
 
     int argc = 0;
-    arg = strtok_r (file_name_copy, " ", &save_ptr);
+    arg = strtok_r(file_name_copy, " ", &save_ptr);
     while (arg != NULL) {
         argc++;
         arg = strtok_r(NULL, " ", &save_ptr);
@@ -445,83 +457,69 @@ load (const char *file_name, struct intr_frame *if_) {
 
     strlcpy(file_name_copy, file_name, strlen(file_name) + 1);
 
-    pos = -1;
-    char** argv;
-    arg = strtok_r (file_name_copy, " ", &save_ptr);
-    argv = (char**) malloc(sizeof(char*)  * argc);
+    int arg_len;
+    int pos = -1;
+    int args_total_length = 0;
+    arg = strtok_r(file_name_copy, " ", &save_ptr);
+    char** argv = (char **) malloc(sizeof(char *) * argc);
+    char** argv_address = (char **) malloc(sizeof(char *) * argc);
     while (arg != NULL) {
         pos++;
 
         /* Store the argument. */
         argv[pos] = arg;
 
-        /* Next argument. */
-        arg = strtok_r (NULL, " ", &save_ptr);
-    }
-
-    int arg_len;
-    int args_total_length = 0;
-    while (pos >= 0) {
-        /* Target argument. */
-        arg = argv[pos];
-
         /* Length of argument with \0. */
         arg_len = strlen(arg) + 1;
 
         /* Make space to store argument. */
-        if_->rsp -= arg_len;
+        *rsp = (char*) *rsp - arg_len;
 
         /* Push argument. */
-        strlcpy(if_->rsp, arg, arg_len);
+        strlcpy((char*) *rsp, arg, arg_len);
 
         /* Store the address of argument. */
-        argv[pos] = if_->rsp;
+        argv_address[pos] = (char*) *rsp;
 
         /* Calculate total length of arguments to align the stack. */
         args_total_length += arg_len;
 
         /* Next argument. */
-        pos--;
+        arg = strtok_r(NULL, " ", &save_ptr);
     }
-
 
     /* Push word align. */
     int remain = args_total_length % 8;
     if (remain > 0)
-        if_->rsp -= 8 - remain;
+        *rsp = (char*) *rsp - (8 - remain);
 
     /* Push NULL pointer. */
-    if_->rsp -= 8;
-    *(uint64_t*) if_->rsp = 0;
+    *rsp = (uintptr_t*) *rsp - 1;
+    **(uint64_t**) rsp = NULL;
 
     /* Push address of arguments. */
-    while ((argc + pos) >= 0) {
+    while (pos >= 0) {
 
         /* Address of target argument. */
-        arg = argv[argc + pos];
+        arg = argv[pos];
 
         /* Make space to store address of argument. */
-        if_->rsp -= 8;
+        *rsp = (uintptr_t*) *rsp - 1;
 
         /* Push argument. */
-        *(uint64_t*) if_->rsp = arg;
+        **(uint64_t **) rsp = arg;
 
         /* Next argument. */
         pos--;
     }
 
     /* Push return address. */
-    if_->rsp -= 8;
-    *(uint64_t*) if_->rsp = 0;
+    *rsp = (uintptr_t*) *rsp - 1;
+    **(uint64_t**) rsp = 0;
 
-    /* Implementation End */
-
-    success = true;
-
-done:
-	/* We arrive here whether the load is successful or not. */
-	file_close (file);
-	return success;
+    /* Push rdi & rsi. */
+    (*if_).R.rdi = argc;
+    (*if_).R.rsi = (uintptr_t*) *rsp + 1;
 }
 
 

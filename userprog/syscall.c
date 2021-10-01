@@ -42,7 +42,8 @@ void
 syscall_handler (struct intr_frame *f UNUSED) {
     /* Implementation Start */
     uint64_t syscall_number =  f->R.rax;
-
+    printf("\nTHREAD : %s\n", thread_current()->name);
+    printf("\nSYSCALL NUMBER : %lld\n", syscall_number);
     switch (syscall_number) {
 
         case SYS_HALT:

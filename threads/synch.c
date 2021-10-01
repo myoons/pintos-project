@@ -115,6 +115,8 @@ sema_up (struct semaphore *sema) {
     ASSERT (sema != NULL);
 
     old_level = intr_disable ();
+
+    sema->value++;
     if (!list_empty (&sema->waiters)) {
 
         /* Sort the threads in waiting list ascending order of priority */
@@ -124,12 +126,15 @@ sema_up (struct semaphore *sema) {
         /* Since waiting list is sorted ascending order of priority,
          * pop thread from the back of waiting list which has the highest priority */
         thread_unblock(max_priority_waiter);
+
+        intr_set_level (old_level);
+
+        if (!intr_context())
+            thread_yield();
+    } else {
+        intr_set_level (old_level);
     }
 
-    sema->value++;
-    intr_set_level (old_level);
-
-    thread_yield();
 }
 
 static void sema_test_helper (void *sema_);
