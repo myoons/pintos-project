@@ -457,20 +457,30 @@ void push_arguments(char* file_name, void** rsp, struct intr_frame *if_) {
 
     strlcpy(file_name_copy, file_name, strlen(file_name) + 1);
 
-    int arg_len;
     int pos = -1;
-    int args_total_length = 0;
     arg = strtok_r(file_name_copy, " ", &save_ptr);
     char** argv = (char **) malloc(sizeof(char *) * argc);
-    char** argv_address = (char **) malloc(sizeof(char *) * argc);
     while (arg != NULL) {
         pos++;
 
         /* Store the argument. */
         argv[pos] = arg;
+        /* Next argument. */
+        arg = strtok_r(NULL, " ", &save_ptr);
+    }
+
+    int arg_len;
+    int args_total_length = 0;
+    char** argv_address = (char **) malloc(sizeof(char *) * argc);
+    while (pos >=0) {
+        /* Target argument. */
+        arg = argv[pos];
 
         /* Length of argument with \0. */
         arg_len = strlen(arg) + 1;
+
+        /* Calculate total length of arguments to align the stack. */
+        args_total_length += arg_len;
 
         /* Make space to store argument. */
         *rsp = (char*) *rsp - arg_len;
@@ -481,11 +491,7 @@ void push_arguments(char* file_name, void** rsp, struct intr_frame *if_) {
         /* Store the address of argument. */
         argv_address[pos] = (char*) *rsp;
 
-        /* Calculate total length of arguments to align the stack. */
-        args_total_length += arg_len;
-
-        /* Next argument. */
-        arg = strtok_r(NULL, " ", &save_ptr);
+        pos--;
     }
 
     /* Push word align. */
@@ -498,10 +504,9 @@ void push_arguments(char* file_name, void** rsp, struct intr_frame *if_) {
     **(uint64_t**) rsp = NULL;
 
     /* Push address of arguments. */
-    while (pos >= 0) {
-
+    while ((argc + pos) >= 0) {
         /* Address of target argument. */
-        arg = argv[pos];
+        arg = argv_address[argc + pos];
 
         /* Make space to store address of argument. */
         *rsp = (uintptr_t*) *rsp - 1;

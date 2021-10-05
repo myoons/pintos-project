@@ -10,6 +10,7 @@
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
+void is_valid_address (void* address);
 
 /* System call.
  *
@@ -42,12 +43,12 @@ void
 syscall_handler (struct intr_frame *f UNUSED) {
     /* Implementation Start */
     uint64_t syscall_number =  f->R.rax;
-    printf("\nTHREAD : %s\n", thread_current()->name);
-    printf("\nSYSCALL NUMBER : %lld\n", syscall_number);
+
     switch (syscall_number) {
 
         case SYS_HALT:
             printf ("SYS_HALT!\n");
+            power_off();
             break;
         case SYS_EXIT:
             printf ("SYS_EXIT!\n");
@@ -90,6 +91,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
             break;
 
     }
+
     /* Implementation End */
-	thread_exit ();
 }
