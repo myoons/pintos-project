@@ -74,9 +74,11 @@ initd (void *f_name) {
  * TID_ERROR if the thread cannot be created. */
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+    tid_t child_tid;
+    child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
 	/* Clone current thread to new thread.*/
-	return thread_create (name,
-			PRI_DEFAULT, __do_fork, thread_current ());
+
+    return child_tid;
 }
 
 #ifndef VM
@@ -91,21 +93,28 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
+    if (is_kernel_vaddr(va))
+        return false;
 
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page (parent->pml4, va);
 
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
+    newpage = palloc_get_page(PAL_USER);
 
-	/* 4. TODO: Duplicate parent's page to the new page and
-	 *    TODO: check whether parent's page is writable or not (set WRITABLE
-	 *    TODO: according to the result). */
+    /* 4. TODO: Duplicate parent's page to the new page and
+     *    TODO: check whether parent's page is writable or not (set WRITABLE
+     *    TODO: according to the result). */
+    memcpy(newpage, parent_page, PGSIZE);
+    writable = is_writable(va);
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
+        palloc_free_page(newpage);
+        return false;
 	}
 	return true;
 }
@@ -124,6 +133,8 @@ __do_fork (void *aux) {
 	struct intr_frame *parent_if;
 	bool succ = true;
 
+    parent_if = parent->tf;
+
 	/* 1. Read the cpu context to local stack. */
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
 
@@ -131,7 +142,7 @@ __do_fork (void *aux) {
 	current->pml4 = pml4_create();
 	if (current->pml4 == NULL)
 		goto error;
-    printf("process.c line 134.\n");
+
 	process_activate (current);
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
@@ -200,13 +211,39 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
-    int j = 0;
-    while (1)
-        j++;
-	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
-	 * XXX:       to add infinite loop here before
-	 * XXX:       implementing the process_wait. */
-	return -1;
+//    int j = 0;
+//    while (1)
+//        j++;
+
+    bool is_my_child;
+    struct list_elem* current_list_elem;
+    struct thread* child_thread_to_wait;
+
+    is_my_child = false;
+    if (!list_empty(&(thread_current()->list_child_processes))) {
+        current_list_elem = list_begin(&(thread_current()->list_child_processes));
+
+        while (current_list_elem != list_end(&(thread_current()->list_child_processes))) {
+            struct thread* target_thread = list_entry (current_list_elem, struct thread, elem_for_child);
+            if (child_tid == target_thread->tid) {
+                child_thread_to_wait = target_thread;
+                is_my_child = true;
+                break;
+            }
+            current_list_elem = list_next(current_list_elem);
+        }
+    } else {
+        return -1;
+    }
+
+    if (!is_my_child)
+        return -1;
+    else {
+        list_remove(&(child_thread_to_wait->elem_for_child));
+        sema_down(&(child_thread_to_wait->sema_parent_wait));
+    }
+
+    return child_thread_to_wait->exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -218,7 +255,8 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	process_cleanup ();
+    printf("%s: exit(%d)\n", curr->name, curr->exit_status);
+    process_cleanup ();
 }
 
 /* Free the current process's resources. */
@@ -438,27 +476,27 @@ done:
 }
 
 
-void push_arguments(char* file_name, void** rsp, struct intr_frame *if_) {
+void push_arguments(char* cmd_line, void** rsp, struct intr_frame *if_) {
 
-    /* Copy file name for parsing; It should not affect other jobs using file_name. */
-    char file_name_copy[128];
-    strlcpy(file_name_copy, file_name, strlen(file_name) + 1);
+    /* Copy file name for parsing; It should not affect other jobs using cmd_line. */
+    char cmd_line_copy[128];
+    strlcpy(cmd_line_copy, cmd_line, strlen(cmd_line) + 1);
 
     /* Parse command line to count number of arguments and get. */
     char *arg;
     char *save_ptr;
 
     int argc = 0;
-    arg = strtok_r(file_name_copy, " ", &save_ptr);
+    arg = strtok_r(cmd_line_copy, " ", &save_ptr);
     while (arg != NULL) {
         argc++;
         arg = strtok_r(NULL, " ", &save_ptr);
     }
 
-    strlcpy(file_name_copy, file_name, strlen(file_name) + 1);
+    strlcpy(cmd_line_copy, cmd_line, strlen(cmd_line) + 1);
 
     int pos = -1;
-    arg = strtok_r(file_name_copy, " ", &save_ptr);
+    arg = strtok_r(cmd_line_copy, " ", &save_ptr);
     char** argv = (char **) malloc(sizeof(char *) * argc);
     while (arg != NULL) {
         pos++;

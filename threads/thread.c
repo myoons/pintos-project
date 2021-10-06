@@ -430,6 +430,7 @@ thread_tid (void) {
 void
 thread_exit (void) {
 	ASSERT (!intr_context ());
+    sema_up(&(thread_current()->sema_parent_wait));
 
 #ifdef USERPROG
 	process_exit ();
@@ -466,6 +467,12 @@ thread_yield (void) {
 
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
+}
+
+void
+increase_fd (void) {
+    struct thread* curr = thread_current();
+    curr->next_fd++;
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -633,8 +640,21 @@ init_thread (struct thread *t, const char *name, int priority) {
     /* Store original priority of the thread due to priority donation */
     t->original_priority = priority;
 
-    /* Initialize list of donated threads */
+    /* Initialize fd
+     * 0 : STDIN
+     * 1 : STDOUT */
+    t->next_fd = 2;
+
+    /* Initialize exit status */
+    t->exit_status = -1;
+
+    /* Initialize lists */
     list_init(&t->list_donated_threads);
+    list_init(&t->list_child_processes);
+    list_init(&t->list_struct_fds);
+
+    /* Initialize semaphore waiting parent threads */
+    sema_init(&t->sema_parent_wait, 0);
 
     /* Add to thread pool */
     list_push_front (&thread_pool, &t->elem_for_pool);

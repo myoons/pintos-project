@@ -107,7 +107,15 @@ struct thread {
 
     struct list_elem elem_for_pool;     /* List element for thread_pool */
 
- /* Shared between thread.c and synch.c. */
+    int exit_status;                    /* Exit status of the corresponding thread */
+    struct list list_child_processes;   /* List of child processes that corresponding thread has created. */
+    struct list_elem elem_for_child;    /* List element for child processes. */
+    struct semaphore sema_parent_wait;  /* Semaphore to make parent thread block. */
+
+    struct list list_struct_fds;        /* List of structure fds of the corresponding thread. */
+    int next_fd;                        /* Number of file descriptor to be assigned next. */
+
+    /* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
@@ -161,6 +169,8 @@ void do_iret (struct intr_frame *tf);
 bool priority_less (const struct list_elem*, const struct list_elem*, void*);
 
 int calculate_priority (int recent_cpu, int nice);
+
+void increase_fd (void);
 
 /* Unlike `priority` and `recent_cpu`, `load_avg` is system-wide */
 int load_avg;
