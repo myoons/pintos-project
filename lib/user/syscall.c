@@ -68,26 +68,54 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 			((uint64_t) ARG3), \
 			((uint64_t) ARG4), \
 			0))
+
+struct lock user_lock; 
+
 void
 halt (void) {
 	syscall0 (SYS_HALT);
 	NOT_REACHED ();
 }
 
+// Terminates the current user program, returning status to the kernel. 
+// If the process's parent waits for it (see below), this is the status that will be returned. 
+// Conventionally, a status of 0 indicates success and nonzero values indicate errors.
 void
 exit (int status) {
-	syscall1 (SYS_EXIT, status);
-	NOT_REACHED ();
+	thread_current()->status_exit = status;
+	thread_exit();
+	// syscall1 (SYS_EXIT, status);
+	// NOT_REACHED ();
 }
 
 pid_t
 fork (const char *thread_name){
-	return (pid_t) syscall1 (SYS_FORK, thread_name);
+	tid_t child_tid;
+	struct intr_frame _if;
+	lock_acquire (&user_lock);
+	_if = thread_current()->tf;
+	child_tid = process_fork(thread_name, &_if);
+	lock_release (&user_lock);
+	return (pid_t)child_tid;
+	// return (pid_t) syscall1 (SYS_FORK, thread_name);
 }
 
+
+// Change current process to the executable whose name is given in cmd_line, 
+// passing any given arguments. This never returns if successful. 
+// Otherwise the process terminates with exit state -1, 
+// if the program cannot load or run for any reason.
 int
 exec (const char *file) {
-	return (pid_t) syscall1 (SYS_EXEC, file);
+	int check_return;
+	// check user?
+	lock_acquire (&user_lock);
+	check_return = process_exec(file);
+	if (check_return == -1) {
+		exit(-1);
+	}
+	lock_release (&user_lock);
+	// return (pid_t) syscall1 (SYS_EXEC, file);
 }
 
 int
@@ -100,9 +128,18 @@ create (const char *file, unsigned initial_size) {
 	return syscall2 (SYS_CREATE, file, initial_size);
 }
 
+
+// Deletes the file called file. Returns true if successful, false otherwise. 
 bool
 remove (const char *file) {
-	return syscall1 (SYS_REMOVE, file);
+	bool remove_status; 
+	check_address((const uint8_t*) file);
+	lock_acquire (&user_lock);
+  	remove_status = filesys_remove(file);
+  	lock_release (&user_lock);
+
+	return remove_status;
+	// return syscall1 (SYS_REMOVE, file);
 }
 
 int
@@ -110,14 +147,54 @@ open (const char *file) {
 	return syscall1 (SYS_OPEN, file);
 }
 
+// Returns the size, in bytes, of the file open as fd.
+// should write code for find_file_fd
 int
 filesize (int fd) {
-	return syscall1 (SYS_FILESIZE, fd);
+	struct file *file;
+	int size;
+	file = find_file_fd(fd);
+	size = file_length(file);
+
+	return size;
+	// return syscall1 (SYS_FILESIZE, fd);
 }
 
+
+// Reads size bytes from the file open as fd into buffer. 
+// Returns the number of bytes actually read (0 at end of file), 
+// or -1 if the file could not be read (due to a condition other than end of file).
+// fd 0 reads from the keyboard using input_getc().
 int
 read (int fd, void *buffer, unsigned size) {
-	return syscall3 (SYS_READ, fd, buffer, size);
+	int read_size;
+	check_address((const uint8_t*) buffer);
+	check_address((const uint8_t*) buffer + size - 1);
+
+	lock_acquire (&user_lock);
+	if (fd == 0){
+		for (unsigned i=0; i<size; i++){
+			if (!put_user(buffer+i, input_getc()) {
+				lock_release(&user_lock);
+				sys_exit(-1);
+			}
+		}
+		read_size = size;
+	}
+	else {
+		file = find_file_fd(fd);
+		if (file) {
+			read_size = file_read(file, buffer, size);
+		}
+		else {
+			read_size = -1;
+		}
+	}
+	lock_release(&user_lock);
+
+	return read_size;
+
+	// return syscall3 (SYS_READ, fd, buffer, size);
 }
 
 int
@@ -125,8 +202,19 @@ write (int fd, const void *buffer, unsigned size) {
 	return syscall3 (SYS_WRITE, fd, buffer, size);
 }
 
+
+// Changes the next byte to be read or written in open file fd to position, 
+// expressed in bytes from the beginning of the file
 void
 seek (int fd, unsigned position) {
+	struct file *file;
+	lock_acquire (&user_lock);
+
+	// find_file_fd 짜야함
+	file = find_file_fd(fd);
+	file_Seek(file, position);
+
+	lock_release (&user_lock);
 	syscall2 (SYS_SEEK, fd, position);
 }
 

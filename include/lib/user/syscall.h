@@ -20,7 +20,7 @@ typedef int off_t;
 #define EXIT_SUCCESS 0          /* Successful execution. */
 #define EXIT_FAILURE 1          /* Unsuccessful execution. */
 
-/* Projects 2 and later. */
+/* Projects 2 and later. 2,3,4,7,9,10,12 */ 
 void halt (void) NO_RETURN;
 void exit (int status) NO_RETURN;
 pid_t fork (const char *thread_name);

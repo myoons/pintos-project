@@ -146,6 +146,15 @@ page_fault (struct intr_frame *f) {
 		return;
 #endif
 
+	// page fault in the kernel merely sets rax to -1 and copies its former value into %rip
+	// if kernel mode
+	if (!user) {
+		f->rip = (void *) f->rax;
+		f->rax = 0xffffffff;
+    	return;
+	}
+
+
 	/* Count page faults. */
 	page_fault_cnt++;
 
