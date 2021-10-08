@@ -81,13 +81,9 @@ put_user (uint8_t *udst, uint8_t byte) {
     return error_code != -1;
 }
 
-/* Is the pointer in user space. */
 void
 is_valid_address (uint8_t *uaddr) {
     if ( get_user(uaddr) == -1 ){
-        if (lock_held_by_current_thread(&lock_for_filesys)) {
-            lock_release(&lock_for_filesys);
-        }
         exit(-1);
     }
 }
@@ -102,6 +98,11 @@ void halt (void) {
 
 /* Terminate this process. */
 void exit(int status) {
+
+    if (lock_held_by_current_thread(&lock_for_filesys)) {
+        lock_release(&lock_for_filesys);
+    }
+
     thread_current()->exit_status = status;
     printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
     thread_exit();
@@ -128,9 +129,7 @@ pid_t fork (const char* thread_name) {
 int exec (const char* file) {
     is_valid_address((uint8_t *) file);
 
-    lock_acquire(&lock_for_filesys);
     tid_t new_process = process_create_initd(file);
-    lock_release(&lock_for_filesys);
 
     if (new_process == TID_ERROR)
         exit(-1);
