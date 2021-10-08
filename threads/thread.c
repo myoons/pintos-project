@@ -347,8 +347,8 @@ thread_create (const char *name, int priority,
      }
 
 #ifdef USERPROG
+	list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
 	if (thread_current()->forked == 0) {
-    	list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
 		// sema_down(&thread_current()->sema_parent_wait);
 	}
 
@@ -819,6 +819,7 @@ schedule (void) {
 #ifdef USERPROG
 	/* Activate the new address space. */
 	process_activate (next);
+	
 #endif
 
 	if (curr != next) {
