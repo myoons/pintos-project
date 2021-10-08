@@ -172,8 +172,7 @@ check_address (void *addr) {
 		if (lock_held_by_current_thread(&user_lock)) {
 			lock_release(&user_lock);
 		}
-		// exit?? pagefault??
-		page_fault();
+		exit(-1);
 	}
 }
 
