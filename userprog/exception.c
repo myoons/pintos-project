@@ -146,18 +146,18 @@ page_fault (struct intr_frame *f) {
 		return;
 #endif
 
-	// TODO: page fault in the kernel merely sets rax to -1 and copies its former value into %rip
-	// if kernel mode
-	if (!user) {
-		f->rip = (void *) f->R.rax;
-		f->R.rax = -1;
-    	exit(-1);
-	}
+    /* Kernel mode. */
+    if (!user) {
+        f->rip = (uintptr_t) f->R.rax;
+        f->R.rax = -1;
+        exit(-1);
+    }
 
-	/* Count page faults. */
-	page_fault_cnt++;
+    /* Count page faults. */
+    page_fault_cnt++;
 
-	/* If the fault is true fault, show info and exit. */
+
+    /* If the fault is true fault, show info and exit. */
 	printf ("Page fault at %p: %s error %s page in %s context.\n",
 			fault_addr,
 			not_present ? "not present" : "rights violation",
