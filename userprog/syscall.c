@@ -69,6 +69,7 @@ void halt (void) {
 /* Terminate this process. */
 void exit(int status) {
     thread_current()->exit_status = status;
+    printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
     thread_exit();
 
     /* Make sure the thread is exited. */
@@ -348,7 +349,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
             close(f->R.rdi);
             break;
         default:
-            NOT_REACHED();
+            thread_exit();
             break;
     }
 }

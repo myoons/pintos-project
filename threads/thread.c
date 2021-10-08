@@ -314,7 +314,21 @@ thread_create (const char *name, int priority,
 	if (t == NULL)
 		return TID_ERROR;
 
-	/* Initialize thread. */
+#ifdef USERPROG
+    /* Copy file name for parsing; It should not affect other jobs using file_name */
+    char user_program[128];
+    strlcpy(user_program, name, strlen(name) + 1);
+
+    /* Parse the command line; First argument is name of user program */
+    int pos = 0;
+    while (user_program[pos] != ' ' && user_program[pos] != '\0')
+        pos ++;
+    user_program[pos] = '\0';
+
+    name = user_program;
+#endif
+
+    /* Initialize thread. */
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
 
@@ -346,7 +360,11 @@ thread_create (const char *name, int priority,
          }
      }
 
-	/* Add to run queue. */
+#ifdef USERPROG
+    list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
+#endif
+
+    /* Add to run queue. */
 	thread_unblock (t);
 
     /* If created thread has higher priority than current thread, yield cpu */
@@ -430,14 +448,14 @@ thread_tid (void) {
 void
 thread_exit (void) {
 	ASSERT (!intr_context ());
-    sema_up(&(thread_current()->sema_parent_wait));
 
 #ifdef USERPROG
 	process_exit ();
 #endif
 
-	/* Just set our status to dying and schedule another process.
-	   We will be destroyed during the call to schedule_tail(). */
+    sema_up(&(thread_current()->sema_parent_wait));
+    /* Just set our status to dying and schedule another process.
+       We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
 	list_remove(&thread_current()->elem_for_pool);
 

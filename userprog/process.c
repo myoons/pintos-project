@@ -51,7 +51,11 @@ process_create_initd (const char *file_name) {
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
-	if (tid == TID_ERROR)
+
+    /* Push thread to child list. */
+
+
+    if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
 }
@@ -241,8 +245,7 @@ process_exec (void *f_name) {
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) {
-
+process_wait (tid_t child_tid) {
     bool is_my_child;
     struct list_elem* current_list_elem;
     struct thread* child_thread_to_wait;
@@ -260,8 +263,6 @@ process_wait (tid_t child_tid UNUSED) {
             }
             current_list_elem = list_next(current_list_elem);
         }
-    } else {
-        return -1;
     }
 
     if (!is_my_child)
@@ -282,8 +283,6 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
-    printf("%s: exit(%d)\n", curr->name, curr->exit_status);
     process_cleanup ();
 }
 
