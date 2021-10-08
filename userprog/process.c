@@ -73,10 +73,15 @@ initd (void *f_name) {
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t
-process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+process_fork (const char *name, struct intr_frame* if_) {
     tid_t child_tid;
+
+    thread_current()->user_if = if_;
+
+    /* Create child thread. */
     child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
-	/* Clone current thread to new thread.*/
+
+    // TODO() : sema_down?
 
     return child_tid;
 }
@@ -93,8 +98,8 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
-    if (is_kernel_vaddr(va))
-        return false;
+    if (is_kern_pte(pte))
+        return true;
 
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page (parent->pml4, va);
@@ -107,7 +112,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
      *    TODO: check whether parent's page is writable or not (set WRITABLE
      *    TODO: according to the result). */
     memcpy(newpage, parent_page, PGSIZE);
-    writable = is_writable(va);
+    writable = is_writable(pte);
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
@@ -116,6 +121,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
         palloc_free_page(newpage);
         return false;
 	}
+
 	return true;
 }
 #endif
@@ -130,10 +136,10 @@ __do_fork (void *aux) {
 	struct thread *parent = (struct thread *) aux;
 	struct thread *current = thread_current ();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if;
+	struct intr_frame* parent_if;
 	bool succ = true;
 
-    parent_if = parent->tf;
+    parent_if = parent->user_if;
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
@@ -159,7 +165,32 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 
+    struct list_elem* current_list_elem;
+    struct struct_fd* struct_fd_for_child;
+    struct struct_fd* target_struct_fd;
+
+    if (!list_empty(&(parent->list_struct_fds))) {
+        current_list_elem = list_begin(&(parent->list_struct_fds));
+
+        while (current_list_elem != list_end(&(parent->list_struct_fds))) {
+            target_struct_fd = list_entry (current_list_elem, struct struct_fd, elem);
+
+            struct_fd_for_child = (struct struct_fd*) malloc(sizeof(struct struct_fd));
+
+            struct_fd_for_child->file = file_duplicate(target_struct_fd->file);
+            struct_fd_for_child->fd = target_struct_fd->fd;
+
+            list_push_front(&(current->list_struct_fds), &struct_fd_for_child->elem);
+
+            current_list_elem = list_next(current_list_elem);
+        }
+    }
+
 	process_init ();
+
+    // TODO()
+
+    current->ptr_thread_parent = parent;
 
 	/* Finally, switch to the newly created process. */
 	if (succ)
@@ -211,9 +242,6 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
-//    int j = 0;
-//    while (1)
-//        j++;
 
     bool is_my_child;
     struct list_elem* current_list_elem;
@@ -362,7 +390,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * Returns true if successful, false otherwise. */
 static bool
 load (const char *file_name, struct intr_frame *if_) {
-	struct thread *t = thread_current ();
+    struct thread *t = thread_current ();
 	struct ELF ehdr;
 	struct file *file = NULL;
 	off_t file_ofs;

@@ -115,8 +115,13 @@ struct thread {
     struct list list_struct_fds;        /* List of structure fds of the corresponding thread. */
     int next_fd;                        /* Number of file descriptor to be assigned next. */
 
+    struct thread* ptr_thread_parent;   /* Pointer for parent thread. */
+
     /* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+
+    struct intr_frame* user_if;          //interrupt frame
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -171,6 +176,13 @@ bool priority_less (const struct list_elem*, const struct list_elem*, void*);
 int calculate_priority (int recent_cpu, int nice);
 
 void increase_fd (void);
+
+/* Struct to store the file descriptor (int) and file*. */
+struct struct_fd {
+    int fd;
+    struct file* file;
+    struct list_elem elem;
+};
 
 /* Unlike `priority` and `recent_cpu`, `load_avg` is system-wide */
 int load_avg;

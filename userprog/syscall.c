@@ -32,13 +32,6 @@ int put_fd_with_file (struct file* target_file);
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
-/* Struct to store the file descriptor (int) and file*. */
-struct struct_fd {
-    int fd;
-    struct file* file;
-    struct list_elem elem;
-};
-
 /* No internal synchronization. Concurrent accesses will interfere with one another.
  * You should use synchronization to ensure that only one process at a time is executing file system code. */
 struct lock lock_for_filesys;
@@ -85,14 +78,14 @@ void exit(int status) {
 /* Clone current process. */
 pid_t fork (const char* thread_name) {
     tid_t child_tid;
-    struct intr_frame _if;
+    struct intr_frame* _if;
 
-    lock_acquire (&lock_for_filesys);
+    _if = &thread_current()->tf;
+    child_tid = process_fork(thread_name, _if);
 
-    _if = thread_current()->tf;
-    child_tid = process_fork(thread_name, &_if);
+    /* Lock parent thread to wait for child exit. */
+    sema_down(&thread_current()->sema_parent_wait);
 
-    lock_release (&lock_for_filesys);
     return (pid_t) child_tid;
 }
 
