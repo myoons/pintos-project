@@ -146,10 +146,18 @@ page_fault (struct intr_frame *f) {
 		return;
 #endif
 
-	/* Count page faults. */
-	page_fault_cnt++;
+    /* Kernel mode. */
+    if (!user) {
+        f->rip = (uintptr_t) f->R.rax;
+        f->R.rax = -1;
+        exit(-1);
+    }
 
-	/* If the fault is true fault, show info and exit. */
+    /* Count page faults. */
+    page_fault_cnt++;
+
+
+    /* If the fault is true fault, show info and exit. */
 	printf ("Page fault at %p: %s error %s page in %s context.\n",
 			fault_addr,
 			not_present ? "not present" : "rights violation",
