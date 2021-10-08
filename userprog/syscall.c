@@ -191,11 +191,7 @@ bool create (const char* file, unsigned initial_size) {
 
 /* Delete a file. */
 bool remove (const char* file) {
-<<<<<<< HEAD
     is_valid_address((uint8_t*) file);
-=======
-    is_valid_address((uint8_t *) file);
->>>>>>> proj2_myoons
     bool result;
 
     lock_acquire(&lock_for_filesys);
