@@ -15,7 +15,7 @@
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
-void is_valid_address (void* addr);
+void is_valid_address (uint8_t *uaddr);
 struct struct_fd* get_struct_with_fd (int fd);
 int put_fd_with_file (struct file* target_file);
 
@@ -52,11 +52,83 @@ syscall_init (void) {
     lock_init(&lock_for_filesys);
 }
 
+// reviseeeeeee
 /* Is the pointer in user space. */
-void is_valid_address(void* addr) {
-    if (is_kernel_vaddr(addr) || addr == NULL)
-        exit(-1);
+// void is_valid_address(void* addr) {
+//     if (is_kernel_vaddr(addr) || addr == NULL)
+//         exit(-1);
+// }
+
+/* Reads a byte at user virtual address UADDR.
+ * UADDR must be below KERN_BASE.
+ * Returns the byte value if successful, -1 if a segfault
+ * occurred. */
+static int64_t
+get_user (const uint8_t *uaddr) {
+    int64_t result;
+
+	if ( (void *)uaddr >= KERN_BASE ) {
+		return -1;
+	}
+
+    __asm __volatile (
+    "movabsq $done_get, %0\n"
+    "movzbq %1, %0\n"
+    "done_get:\n"
+    : "=&a" (result) : "m" (*uaddr));
+    return result;
+
 }
+
+
+/* Writes BYTE to user address UDST.
+ * UDST must be below KERN_BASE.
+ * Returns true if successful, false if a segfault occurred. */
+static bool
+put_user (uint8_t *udst, uint8_t byte) {
+    int64_t error_code;
+
+	if ( (void *)udst >= KERN_BASE ) {
+    	return false;
+  	}
+
+    __asm __volatile (
+    "movabsq $done_put, %0\n"
+    "movb %b2, %1\n"
+    "done_put:\n"
+    : "=&a" (error_code), "=m" (*udst) : "q" (byte));
+    return error_code != -1;
+}
+
+
+ //create, open, write, exec
+void 
+is_valid_address (uint8_t *uaddr) {
+	if ( get_user(uaddr) == -1 ){
+		if (lock_held_by_current_thread(&lock_for_filesys)) {
+			lock_release(&lock_for_filesys);
+		}
+		exit(-1);
+	}
+}
+
+
+void
+read_memory (void *src, void *dst, size_t bytes) {
+	for (size_t i =0; i<bytes; i++){
+		if (get_user(src + i) == -1) {
+			if (lock_held_by_current_thread(&lock_for_filesys)) {
+				lock_release(&lock_for_filesys);
+			}
+			exit(-1);
+		}
+
+		*(char*)(dst + i) = get_user(src + i) & 0xff;
+	}
+}
+
+///////
+
 
 /* Halt the operating system. */
 void halt (void) {
@@ -92,7 +164,7 @@ pid_t fork (const char* thread_name) {
 
 /* Switch current process. */
 int exec (const char* file) {
-    is_valid_address((void*) file);
+    is_valid_address((uint8_t*) file);
 
     lock_acquire(&lock_for_filesys);
     tid_t new_process = process_create_initd(file);
@@ -111,7 +183,7 @@ int wait (pid_t pid) {
 
 /* Create a file. */
 bool create (const char* file, unsigned initial_size) {
-    is_valid_address((void*) file);
+    is_valid_address((uint8_t*) file);
     bool result;
 
     lock_acquire(&lock_for_filesys);
@@ -123,7 +195,7 @@ bool create (const char* file, unsigned initial_size) {
 
 /* Delete a file. */
 bool remove (const char* file) {
-    is_valid_address((void*) file);
+    is_valid_address((uint8_t*) file);
     bool result;
 
     lock_acquire(&lock_for_filesys);
@@ -170,7 +242,7 @@ int put_fd_with_file (struct file* target_file) {
 
 /* Open a file. */
 int open (const char* file) {
-    is_valid_address((void*) file);
+    is_valid_address((uint8_t*) file);
     struct file* opened_file;
     int result;
 
@@ -205,7 +277,7 @@ int filesize (int fd) {
 
 /* Read from a file. */
 int read (int fd, void* buffer, unsigned length) {
-    is_valid_address(buffer);
+    is_valid_address((uint8_t*) buffer);
     struct struct_fd* target_struct_fd;
     int result;
 
@@ -230,7 +302,7 @@ int read (int fd, void* buffer, unsigned length) {
 
 /* Write to a file. */
 int write (int fd, const void* buffer, unsigned length) {
-    is_valid_address(buffer);
+    is_valid_address((uint8_t*) buffer);
     struct struct_fd* target_struct_fd;
     int result;
 
