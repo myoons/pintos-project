@@ -122,6 +122,7 @@ struct thread {
 
     struct intr_frame* user_if;          //interrupt frame
 
+	int forked; 
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

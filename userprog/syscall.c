@@ -134,8 +134,7 @@ pid_t fork (const char* thread_name) {
     struct intr_frame* _if;
 
     _if = &thread_current()->tf;
-	sema_down(&(thread_current()->sema_parent_wait));
-	
+
     child_tid = process_fork(thread_name, _if);
 
     /* Lock parent thread to wait for child exit. */

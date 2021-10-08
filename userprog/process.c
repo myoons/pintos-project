@@ -91,13 +91,14 @@ process_fork (const char *name, struct intr_frame* if_) {
     tid_t child_tid;
 
     thread_current()->user_if = if_;
-
+	thread_current()->forked = 0;
+	
     /* Create child thread. */
-    child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
+    return thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
 
     // TODO() : sema_down?
 
-    return child_tid;
+    // return child_tid;
 }
 
 #ifndef VM

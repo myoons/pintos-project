@@ -67,7 +67,6 @@ sema_down (struct semaphore *sema) {
 	old_level = intr_disable ();
 	while (sema->value == 0) {
 
-        printf("sema down");
         /* Thread should be pushed to waiting list of the corresponding sema .
          * Then sort the threads in waiting list ascending order of priority */
         list_push_front (&sema->waiters, &thread_current()->elem);

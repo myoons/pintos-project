@@ -347,7 +347,10 @@ thread_create (const char *name, int priority,
      }
 
 #ifdef USERPROG
-    list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
+	if (thread_current()->forked == 0) {
+    	list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
+		// sema_down(&thread_current()->sema_parent_wait);
+	}
 
 #endif
 
@@ -654,6 +657,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 
     /* Initialize exit status */
     t->exit_status = -1;
+
+	//
+	t->forked = 1;
 
     /* Initialize lists */
     list_init(&t->list_donated_threads);
