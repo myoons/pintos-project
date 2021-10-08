@@ -162,19 +162,23 @@ pid_t fork (const char* thread_name) {
     return (pid_t) child_tid;
 }
 
+
 /* Switch current process. */
 int exec (const char* file) {
+	int check_return;
     is_valid_address((uint8_t*) file);
 
     lock_acquire(&lock_for_filesys);
-    tid_t new_process = process_create_initd(file);
+    check_return = process_exec(file);
     lock_release(&lock_for_filesys);
+	
+	if (check_return == -1) {
+		exit(-1);
+	}
 
-    if (new_process == TID_ERROR)
-        exit(-1);
-
-    return new_process;
+    return check_return;
 }
+
 
 /* Wait for a child process to die. */
 int wait (pid_t pid) {

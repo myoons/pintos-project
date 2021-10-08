@@ -151,7 +151,7 @@ page_fault (struct intr_frame *f) {
 	if (!user) {
 		f->rip = (void *) f->R.rax;
 		f->R.rax = -1;
-    	return;
+    	exit(-1);
 	}
 
 	/* Count page faults. */
