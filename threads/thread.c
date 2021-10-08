@@ -348,6 +348,7 @@ thread_create (const char *name, int priority,
 
 #ifdef USERPROG
     list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
+
 #endif
 
     /* Add to run queue. */
@@ -436,10 +437,12 @@ thread_exit (void) {
 	ASSERT (!intr_context ());
 
 #ifdef USERPROG
+	sema_up(&(thread_current()->sema_parent_wait));
 	process_exit ();
+
 #endif
 
-    sema_up(&(thread_current()->sema_parent_wait));
+    // sema_up(&(thread_current()->sema_parent_wait));
     /* Just set our status to dying and schedule another process.
        We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();

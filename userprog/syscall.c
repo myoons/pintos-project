@@ -15,11 +15,7 @@
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
-<<<<<<< HEAD
 void is_valid_address (uint8_t *uaddr);
-=======
-void is_valid_address (uint8_t * addr);
->>>>>>> proj2_myoons
 struct struct_fd* get_struct_with_fd (int fd);
 int put_fd_with_file (struct file* target_file);
 
@@ -138,10 +134,12 @@ pid_t fork (const char* thread_name) {
     struct intr_frame* _if;
 
     _if = &thread_current()->tf;
+	sema_down(&(thread_current()->sema_parent_wait));
+	
     child_tid = process_fork(thread_name, _if);
 
     /* Lock parent thread to wait for child exit. */
-    sema_down(&thread_current()->sema_parent_wait);
+    // sema_down(&thread_current()->sema_parent_wait);
 
     return (pid_t) child_tid;
 }
@@ -149,12 +147,8 @@ pid_t fork (const char* thread_name) {
 
 /* Switch current process. */
 int exec (const char* file) {
-<<<<<<< HEAD
 	int check_return;
     is_valid_address((uint8_t*) file);
-=======
-    is_valid_address((uint8_t *) file);
->>>>>>> proj2_myoons
 
     lock_acquire(&lock_for_filesys);
     check_return = process_exec(file);
@@ -175,11 +169,7 @@ int wait (pid_t pid) {
 
 /* Create a file. */
 bool create (const char* file, unsigned initial_size) {
-<<<<<<< HEAD
     is_valid_address((uint8_t*) file);
-=======
-    is_valid_address((uint8_t *) file);
->>>>>>> proj2_myoons
     bool result;
 
     lock_acquire(&lock_for_filesys);
@@ -238,11 +228,7 @@ int put_fd_with_file (struct file* target_file) {
 
 /* Open a file. */
 int open (const char* file) {
-<<<<<<< HEAD
     is_valid_address((uint8_t*) file);
-=======
-    is_valid_address((uint8_t *) file);
->>>>>>> proj2_myoons
     struct file* opened_file;
     int result;
 
@@ -277,11 +263,7 @@ int filesize (int fd) {
 
 /* Read from a file. */
 int read (int fd, void* buffer, unsigned length) {
-<<<<<<< HEAD
     is_valid_address((uint8_t*) buffer);
-=======
-    is_valid_address((uint8_t *) buffer);
->>>>>>> proj2_myoons
     struct struct_fd* target_struct_fd;
     int result;
 
@@ -306,11 +288,7 @@ int read (int fd, void* buffer, unsigned length) {
 
 /* Write to a file. */
 int write (int fd, const void* buffer, unsigned length) {
-<<<<<<< HEAD
     is_valid_address((uint8_t*) buffer);
-=======
-    is_valid_address((uint8_t *) buffer);
->>>>>>> proj2_myoons
     struct struct_fd* target_struct_fd;
     int result;
 
