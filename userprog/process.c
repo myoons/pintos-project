@@ -49,8 +49,18 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+    /* Copy file name for parsing; It should not affect other jobs using file_name */
+    char user_program[128];
+    strlcpy(user_program, file_name, strlen(file_name) + 1);
+
+    /* Parse the command line; First argument is name of user program */
+    int pos = 0;
+    while (user_program[pos] != ' ' && user_program[pos] != '\0')
+        pos ++;
+    user_program[pos] = '\0';
+
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (user_program, PRI_DEFAULT, initd, fn_copy);
 
     /* Push thread to child list. */
 

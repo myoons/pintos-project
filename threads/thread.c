@@ -314,20 +314,6 @@ thread_create (const char *name, int priority,
 	if (t == NULL)
 		return TID_ERROR;
 
-#ifdef USERPROG
-    /* Copy file name for parsing; It should not affect other jobs using file_name */
-    char user_program[128];
-    strlcpy(user_program, name, strlen(name) + 1);
-
-    /* Parse the command line; First argument is name of user program */
-    int pos = 0;
-    while (user_program[pos] != ' ' && user_program[pos] != '\0')
-        pos ++;
-    user_program[pos] = '\0';
-
-    name = user_program;
-#endif
-
     /* Initialize thread. */
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
