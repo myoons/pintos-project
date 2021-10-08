@@ -147,11 +147,8 @@ page_fault (struct intr_frame *f) {
 #endif
 
     /* Kernel mode. */
-    if (!user) {
-        f->rip = (uintptr_t) f->R.rax;
-        f->R.rax = -1;
+    if (is_user_vaddr(fault_addr))
         exit(-1);
-    }
 
     /* Count page faults. */
     page_fault_cnt++;

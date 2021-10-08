@@ -10,6 +10,7 @@
 #include "userprog/process.h"
 #include "threads/flags.h"
 #include "threads/malloc.h"
+#include "threads/palloc.h"
 #include "intrinsic.h"
 
 void syscall_entry (void);
@@ -129,12 +130,16 @@ pid_t fork (const char* thread_name) {
 int exec (const char* file) {
     is_valid_address((uint8_t *) file);
 
-    tid_t new_process = process_create_initd(file);
+    /* Copy file name for parsing; It should not affect other jobs using file_name */
+    char* fn_copy;
+    fn_copy = (char*) palloc_get_page (PAL_USER);
+    if (fn_copy == NULL)
+        return TID_ERROR;
 
-    if (new_process == TID_ERROR)
-        exit(-1);
+    strlcpy (fn_copy, file, PGSIZE);
 
-    return new_process;
+    int result = process_exec(fn_copy);
+    return result;
 }
 
 /* Wait for a child process to die. */
