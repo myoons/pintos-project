@@ -99,6 +99,8 @@ void halt (void) {
 
 /* Terminate this process. */
 void exit(int status) {
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 
     thread_current()->exit_status = status;
     printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
@@ -124,6 +126,9 @@ int exec (const char* file) {
         return TID_ERROR;
 
     strlcpy (fn_copy, file, PGSIZE);
+
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 
     int result = process_exec(fn_copy);
     return result;
@@ -233,7 +238,6 @@ int read (int fd, void* buffer, unsigned length) {
     is_valid_address((uint8_t *) buffer);
     struct struct_fd* target_struct_fd;
     int result;
-
     lock_acquire(&lock_for_filesys);
 
     if (fd == 0)

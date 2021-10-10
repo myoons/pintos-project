@@ -27,6 +27,10 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 
+/* No internal synchronization. Concurrent accesses will interfere with one another.
+ * You should use synchronization to ensure that only one process at a time is executing file system code. */
+struct lock lock_for_filesys;
+
 /* General process initializer for initd and other process. */
 static void
 process_init (void) {
@@ -97,15 +101,6 @@ process_fork (const char *name, struct intr_frame* if_) {
 
     struct list_elem* current_list_elem;
     struct thread* target_thread;
-
-//    current_list_elem = list_begin(&thread_current()->list_child_processes);
-//    while (!list_empty(&(thread_current()->list_child_processes))) {
-//        target_thread = list_entry(current_list_elem, struct thread, elem_for_child);
-//        if (target_thread->exit_status == -1) {
-//            return -1;
-//        }
-//        current_list_elem = list_next(current_list_elem);
-//    }
 
     return child_tid;
 }
@@ -255,9 +250,8 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
-    file_deny_write(thread_current()->curr_exec_file);
-
     /* Start switched process. */
+    file_deny_write(thread_current()->curr_exec_file);
 	do_iret (&_if);
 	NOT_REACHED ();
 }
@@ -310,6 +304,8 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+    process_cleanup ();
+
     struct list_elem* current_list_elem;
     struct struct_fd* target_struct_fd;
 
@@ -317,9 +313,7 @@ process_exit (void) {
         current_list_elem = list_pop_front(&thread_current()->list_struct_fds);
         target_struct_fd = list_entry(current_list_elem, struct struct_fd, elem);
 
-        if (target_struct_fd->file != NULL)
-            file_close(target_struct_fd->file);
-
+        file_close(target_struct_fd->file);
         free(target_struct_fd);
     }
 
@@ -335,8 +329,6 @@ process_exit (void) {
 
     thread_current()->tf.R.rax=thread_current()->exit_status;
     sema_up(&(thread_current()->sema_parent_wait));
-
-    process_cleanup ();
 }
 
 /* Free the current process's resources. */
@@ -552,7 +544,6 @@ load (const char *file_name, struct intr_frame *if_) {
 done:
 	/* We arrive here whether the load is successful or not. */
     thread_current()->curr_exec_file = file;
-
     return success;
 }
 
