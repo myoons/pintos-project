@@ -255,7 +255,7 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
-    file_deny_write(thread_current()->curr_exec_file);
+    // file_deny_write(thread_current()->curr_exec_file);
 
     /* Start switched process. */
 	do_iret (&_if);
@@ -324,7 +324,7 @@ process_exit (void) {
     }
 
     if (thread_current()->curr_exec_file != NULL)
-        file_allow_write(thread_current()->curr_exec_file);
+        file_deny_write(thread_current()->curr_exec_file);
 
     if (!list_empty(&(thread_current()->list_child_processes))) {
         current_list_elem = list_begin(&(thread_current()->list_child_processes));
@@ -552,6 +552,7 @@ load (const char *file_name, struct intr_frame *if_) {
 done:
 	/* We arrive here whether the load is successful or not. */
     thread_current()->curr_exec_file = file;
+	file_deny_write(file);
 
     return success;
 }

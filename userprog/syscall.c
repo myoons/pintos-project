@@ -89,6 +89,21 @@ is_valid_address (uint8_t *uaddr) {
     }
 }
 
+//
+void
+read_memory (void *src, void *dst, size_t bytes) {
+	for (size_t i =0; i<bytes; i++){
+		if (get_user(src + i) == -1) {
+			if (lock_held_by_current_thread(&lock_for_filesys)) {
+				lock_release(&lock_for_filesys);
+			}
+			exit(-1);
+		}
+
+		*(char*)(dst + i) = get_user(src + i) & 0xff;
+	}
+}
+
 /* Halt the operating system. */
 void halt (void) {
     power_off();
@@ -162,6 +177,10 @@ struct struct_fd* get_struct_with_fd (int fd) {
     struct list_elem* current_list_elem;
     struct struct_fd* to_find_struct_fd;
 
+    if (fd < 3) {
+        return NULL;
+    }
+
     if (!list_empty(&(thread_current()->list_struct_fds))) {
         current_list_elem = list_begin(&(thread_current()->list_struct_fds));
 
@@ -231,13 +250,22 @@ int filesize (int fd) {
 /* Read from a file. */
 int read (int fd, void* buffer, unsigned length) {
     is_valid_address((uint8_t *) buffer);
+    is_valid_address((uint8_t *) buffer+length-1);
     struct struct_fd* target_struct_fd;
     int result;
 
     lock_acquire(&lock_for_filesys);
 
-    if (fd == 0)
-        result = (int) input_getc();
+    if (fd == 0) {
+        // result = (int) input_getc();
+        for (unsigned i=0; i<length; i++){
+			if (!put_user(buffer+i, input_getc())) {
+				lock_release(&lock_for_filesys);
+				exit(-1);
+			}
+		}
+		result = length;
+    }
     else if (fd == 1)
         result = -1;
     else {
