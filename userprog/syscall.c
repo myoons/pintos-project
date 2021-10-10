@@ -10,6 +10,7 @@
 #include "userprog/process.h"
 #include "threads/flags.h"
 #include "threads/malloc.h"
+#include "threads/palloc.h"
 #include "intrinsic.h"
 
 void syscall_entry (void);
@@ -81,13 +82,9 @@ put_user (uint8_t *udst, uint8_t byte) {
     return error_code != -1;
 }
 
-/* Is the pointer in user space. */
 void
 is_valid_address (uint8_t *uaddr) {
     if ( get_user(uaddr) == -1 ){
-        if (lock_held_by_current_thread(&lock_for_filesys)) {
-            lock_release(&lock_for_filesys);
-        }
         exit(-1);
     }
 }
@@ -120,6 +117,7 @@ void halt (void) {
 
 /* Terminate this process. */
 void exit(int status) {
+
     thread_current()->exit_status = status;
     printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
     thread_exit();
@@ -129,21 +127,8 @@ void exit(int status) {
 }
 
 /* Clone current process. */
-pid_t fork (const char* thread_name) {
-    tid_t child_tid;
-    struct intr_frame* _if;
-    struct thread *parent;
-
-    parent = thread_current ();
-    _if = &thread_current()->tf;
-
-    child_tid = process_fork(thread_name, _if);
- 
-    ASSERT(1>2);
-    /* Lock parent thread to wait for child exit. */
-    // sema_down(&parent->sema_parent_wait);
-
-    return (pid_t) child_tid;
+pid_t fork (const char* thread_name, struct intr_frame* f) {
+    return (pid_t) process_fork(thread_name, f);
 }
 
 
@@ -152,15 +137,16 @@ int exec (const char* file) {
 	int check_return;
     is_valid_address((uint8_t*) file);
 
-    lock_acquire(&lock_for_filesys);
-    check_return = process_exec(file);
-    lock_release(&lock_for_filesys);
-	
-	if (check_return == -1) {
-		exit(-1);
-	}
+    /* Copy file name for parsing; It should not affect other jobs using file_name */
+    char* fn_copy;
+    fn_copy = (char*) palloc_get_page (PAL_USER);
+    if (fn_copy == NULL)
+        return TID_ERROR;
 
-    return check_return;
+    strlcpy (fn_copy, file, PGSIZE);
+
+    int result = process_exec(fn_copy);
+    return result;
 }
 
 
@@ -324,8 +310,6 @@ void seek (int fd, unsigned position) {
 
     if (target_struct_fd != NULL)
         file_seek(target_struct_fd->file, position);
-    else
-        exit(-1);
 
     lock_release(&lock_for_filesys);
 }
@@ -357,9 +341,9 @@ void close (int fd) {
     if (target_struct_fd != NULL) {
         file_close(target_struct_fd->file);
         list_remove(&(target_struct_fd->elem));
-    } else {
-        exit(-1);
+        free(target_struct_fd);
     }
+
     lock_release(&lock_for_filesys);
 }
 
@@ -376,7 +360,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
         case SYS_EXIT:
             exit(f->R.rdi);
         case SYS_FORK:
-            f->R.rax = fork(f->R.rdi);
+            f->R.rax = fork(f->R.rdi, f);
             break;
         case SYS_EXEC:
             f->R.rax = exec(f->R.rdi);

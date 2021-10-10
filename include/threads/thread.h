@@ -116,11 +116,13 @@ struct thread {
     int next_fd;                        /* Number of file descriptor to be assigned next. */
 
     struct thread* ptr_thread_parent;   /* Pointer for parent thread. */
+    struct semaphore sema_for_fork;     /* Semaphore to block thread while forking. */
+    struct file* curr_exec_file;        /* File the corresponding thread is currently executing. */
 
     /* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
-    struct intr_frame* user_if;          //interrupt frame
+    struct intr_frame* user_if;          /* Interrupt frame for fork. */
 
 	int forked; 
 
