@@ -94,11 +94,11 @@ process_fork (const char *name, struct intr_frame* if_) {
 	thread_current()->forked = 0;
 	
     /* Create child thread. */
-    return thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
-
+    child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
+	ASSERT(1>2);
     // TODO() : sema_down?
 
-    // return child_tid;
+    return child_tid;
 }
 
 #ifndef VM
@@ -165,6 +165,7 @@ __do_fork (void *aux) {
 		goto error;
 
 	process_activate (current);
+
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
 	if (!supplemental_page_table_copy (&current->spt, &parent->spt))
@@ -173,7 +174,6 @@ __do_fork (void *aux) {
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
-
 	/* TODO: Your code goes here.
 	 * TODO: Hint) To duplicate the file object, use `file_duplicate`
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
@@ -210,6 +210,7 @@ __do_fork (void *aux) {
 	/* Finally, switch to the newly created process. */
 	if (succ)
 		do_iret (&if_);
+		// sema_up(&(thread_current()->sema_parent_wait));
 error:
 	thread_exit ();
 }
@@ -260,7 +261,7 @@ process_wait (tid_t child_tid) {
     bool is_my_child;
     struct list_elem* current_list_elem;
     struct thread* child_thread_to_wait;
-
+	
     is_my_child = false;
     if (!list_empty(&(thread_current()->list_child_processes))) {
         current_list_elem = list_begin(&(thread_current()->list_child_processes));

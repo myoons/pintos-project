@@ -132,13 +132,16 @@ void exit(int status) {
 pid_t fork (const char* thread_name) {
     tid_t child_tid;
     struct intr_frame* _if;
+    struct thread *parent;
 
+    parent = thread_current ();
     _if = &thread_current()->tf;
 
     child_tid = process_fork(thread_name, _if);
-
+ 
+    ASSERT(1>2);
     /* Lock parent thread to wait for child exit. */
-    // sema_down(&thread_current()->sema_parent_wait);
+    // sema_down(&parent->sema_parent_wait);
 
     return (pid_t) child_tid;
 }

@@ -306,7 +306,7 @@ thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
 	struct thread *t;
 	tid_t tid;
-
+	
 	ASSERT (function != NULL);
 
 	/* Allocate thread. */
@@ -348,19 +348,24 @@ thread_create (const char *name, int priority,
 
 #ifdef USERPROG
 	list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
-	if (thread_current()->forked == 0) {
-		// sema_down(&thread_current()->sema_parent_wait);
-	}
+	// if (thread_current()->forked == 0) {
+	// 	sema_down(&thread_current()->sema_parent_wait);
+	// }
+
 
 #endif
-
     /* Add to run queue. */
 	thread_unblock (t);
+
+	if (thread_current()->forked == 0) {
+		sema_down(&thread_current()->sema_parent_wait);
+	}
 
     /* If created thread has higher priority than current thread, yield cpu */
     if (thread_current()->priority < t->priority)
         thread_yield();
 
+	// ASSERT(1>2);
 	return tid;
 }
 
@@ -714,6 +719,7 @@ do_iret (struct intr_frame *tf) {
 			"addq $32, %%rsp\n"
 			"iretq"
 			: : "g" ((uint64_t) tf) : "memory");
+			
 }
 
 /* Switching the thread by activating the new thread's page
