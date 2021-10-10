@@ -100,10 +100,6 @@ void halt (void) {
 /* Terminate this process. */
 void exit(int status) {
 
-    if (lock_held_by_current_thread(&lock_for_filesys)) {
-        lock_release(&lock_for_filesys);
-    }
-
     thread_current()->exit_status = status;
     printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
     thread_exit();
@@ -113,17 +109,8 @@ void exit(int status) {
 }
 
 /* Clone current process. */
-pid_t fork (const char* thread_name) {
-    tid_t child_tid;
-    struct intr_frame* _if;
-
-    _if = &thread_current()->tf;
-    child_tid = process_fork(thread_name, _if);
-
-    /* Lock parent thread to wait for child exit. */
-    sema_down(&thread_current()->sema_parent_wait);
-
-    return (pid_t) child_tid;
+pid_t fork (const char* thread_name, struct intr_frame* f) {
+    return (pid_t) process_fork(thread_name, f);
 }
 
 /* Switch current process. */
@@ -302,8 +289,6 @@ void seek (int fd, unsigned position) {
 
     if (target_struct_fd != NULL)
         file_seek(target_struct_fd->file, position);
-    else
-        exit(-1);
 
     lock_release(&lock_for_filesys);
 }
@@ -335,9 +320,9 @@ void close (int fd) {
     if (target_struct_fd != NULL) {
         file_close(target_struct_fd->file);
         list_remove(&(target_struct_fd->elem));
-    } else {
-        exit(-1);
+        free(target_struct_fd);
     }
+
     lock_release(&lock_for_filesys);
 }
 
@@ -354,7 +339,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
         case SYS_EXIT:
             exit(f->R.rdi);
         case SYS_FORK:
-            f->R.rax = fork(f->R.rdi);
+            f->R.rax = fork(f->R.rdi, f);
             break;
         case SYS_EXEC:
             f->R.rax = exec(f->R.rdi);

@@ -331,6 +331,10 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+#ifdef USERPROG
+    list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
+#endif
+
     intr_set_level (old_level);
 
      if (thread_mlfqs && t != idle_thread) {
@@ -345,10 +349,6 @@ thread_create (const char *name, int priority,
              t->priority = mlfqs_priority(t->recent_cpu, t->nice);
          }
      }
-
-#ifdef USERPROG
-    list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
-#endif
 
     /* Add to run queue. */
 	thread_unblock (t);
@@ -439,7 +439,6 @@ thread_exit (void) {
 	process_exit ();
 #endif
 
-    sema_up(&(thread_current()->sema_parent_wait));
     /* Just set our status to dying and schedule another process.
        We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
@@ -650,7 +649,7 @@ init_thread (struct thread *t, const char *name, int priority) {
     t->next_fd = 2;
 
     /* Initialize exit status */
-    t->exit_status = -1;
+    t->exit_status = 0;
 
     /* Initialize lists */
     list_init(&t->list_donated_threads);
@@ -659,9 +658,14 @@ init_thread (struct thread *t, const char *name, int priority) {
 
     /* Initialize semaphore waiting parent threads */
     sema_init(&t->sema_parent_wait, 0);
+    sema_init(&t->sema_for_fork, 0);
+
+    t->curr_exec_file = NULL;
+    t->ptr_thread_parent = NULL;
 
     /* Add to thread pool */
     list_push_front (&thread_pool, &t->elem_for_pool);
+
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

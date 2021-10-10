@@ -89,13 +89,23 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame* if_) {
     tid_t child_tid;
-
     thread_current()->user_if = if_;
 
     /* Create child thread. */
     child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
+    sema_down(&thread_current()->sema_for_fork);
 
-    // TODO() : sema_down?
+    struct list_elem* current_list_elem;
+    struct thread* target_thread;
+
+//    current_list_elem = list_begin(&thread_current()->list_child_processes);
+//    while (!list_empty(&(thread_current()->list_child_processes))) {
+//        target_thread = list_entry(current_list_elem, struct thread, elem_for_child);
+//        if (target_thread->exit_status == -1) {
+//            return -1;
+//        }
+//        current_list_elem = list_next(current_list_elem);
+//    }
 
     return child_tid;
 }
@@ -149,10 +159,10 @@ __do_fork (void *aux) {
 	struct intr_frame if_;
 	struct thread *parent = (struct thread *) aux;
 	struct thread *current = thread_current ();
-	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame* parent_if;
 	bool succ = true;
 
+    /* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
+    struct intr_frame* parent_if;
     parent_if = parent->user_if;
 
 	/* 1. Read the cpu context to local stack. */
@@ -201,16 +211,22 @@ __do_fork (void *aux) {
     }
 
 	process_init ();
-
-    // TODO()
-
     current->ptr_thread_parent = parent;
+    sema_up(&(parent->sema_for_fork));
 
 	/* Finally, switch to the newly created process. */
-	if (succ)
-		do_iret (&if_);
+    if (succ) {
+        current->exit_status=if_.R.rax;
+        if_.R.rax = 0;
+        current->tf=if_;
+        do_iret (&if_);
+    }
+
 error:
-	thread_exit ();
+    current->ptr_thread_parent = parent;
+    current->exit_status = -1;
+    sema_up(&parent->sema_for_fork);
+    thread_exit ();
 }
 
 /* Switch the current execution context to the f_name.
@@ -239,7 +255,9 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
-	/* Start switched process. */
+    file_deny_write(thread_current()->curr_exec_file);
+
+    /* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
 }
@@ -292,6 +310,32 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+    struct list_elem* current_list_elem;
+    struct struct_fd* target_struct_fd;
+
+    while (!list_empty(&(thread_current()->list_struct_fds))) {
+        current_list_elem = list_pop_front(&thread_current()->list_struct_fds);
+        target_struct_fd = list_entry(current_list_elem, struct struct_fd, elem);
+
+        if (target_struct_fd->file != NULL)
+            file_close(target_struct_fd->file);
+
+        free(target_struct_fd);
+    }
+
+    if (thread_current()->curr_exec_file != NULL)
+        file_allow_write(thread_current()->curr_exec_file);
+
+    if (!list_empty(&(thread_current()->list_child_processes))) {
+        current_list_elem = list_begin(&(thread_current()->list_child_processes));
+
+        while (current_list_elem != list_end(&(thread_current()->list_child_processes)))
+            current_list_elem = list_remove(current_list_elem);
+    }
+
+    thread_current()->tf.R.rax=thread_current()->exit_status;
+    sema_up(&(thread_current()->sema_parent_wait));
+
     process_cleanup ();
 }
 
@@ -507,8 +551,9 @@ load (const char *file_name, struct intr_frame *if_) {
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file);
-	return success;
+    thread_current()->curr_exec_file = file;
+
+    return success;
 }
 
 
