@@ -119,6 +119,9 @@ pid_t fork (const char* thread_name, struct intr_frame* f) {
 int exec (const char* file) {
     is_valid_address((uint8_t *) file);
 
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     /* Copy file name for parsing; It should not affect other jobs using file_name */
     char* fn_copy;
     fn_copy = (char*) palloc_get_page (PAL_USER);
@@ -144,9 +147,13 @@ bool create (const char* file, unsigned initial_size) {
     is_valid_address((uint8_t *) file);
     bool result;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     result = filesys_create(file, initial_size);
-    lock_release(&lock_for_filesys);
+
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 
     return result;
 }
@@ -156,9 +163,13 @@ bool remove (const char* file) {
     is_valid_address((uint8_t *) file);
     bool result;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     result = filesys_remove(file);
-    lock_release(&lock_for_filesys);
+
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 
     return result;
 }
@@ -204,7 +215,8 @@ int open (const char* file) {
     struct file* opened_file;
     int result;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
     opened_file = filesys_open(file);
 
     if (opened_file == NULL)
@@ -212,7 +224,8 @@ int open (const char* file) {
     else
         result = put_fd_with_file(opened_file);
 
-    lock_release(&lock_for_filesys);
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
     return result;
 }
 
@@ -221,7 +234,8 @@ int filesize (int fd) {
     struct struct_fd* target_struct_fd;
     int result;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
     target_struct_fd = get_struct_with_fd(fd);
 
     if (target_struct_fd == NULL)
@@ -229,7 +243,8 @@ int filesize (int fd) {
     else
         result = (int) file_length(target_struct_fd->file);
 
-    lock_release(&lock_for_filesys);
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
     return result;
 }
 
@@ -238,7 +253,9 @@ int read (int fd, void* buffer, unsigned length) {
     is_valid_address((uint8_t *) buffer);
     struct struct_fd* target_struct_fd;
     int result;
-    lock_acquire(&lock_for_filesys);
+
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
 
     if (fd == 0)
         result = (int) input_getc();
@@ -253,7 +270,8 @@ int read (int fd, void* buffer, unsigned length) {
             result = (int) file_read(target_struct_fd->file, buffer, length);
     }
 
-    lock_release(&lock_for_filesys);
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
     return result;
 }
 
@@ -263,7 +281,8 @@ int write (int fd, const void* buffer, unsigned length) {
     struct struct_fd* target_struct_fd;
     int result;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
 
     if (fd == 0)
         result = -1;
@@ -280,7 +299,8 @@ int write (int fd, const void* buffer, unsigned length) {
             result = (int) file_write(target_struct_fd->file, buffer, length);
     }
 
-    lock_release(&lock_for_filesys);
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
     return result;
 }
 
@@ -288,13 +308,16 @@ int write (int fd, const void* buffer, unsigned length) {
 void seek (int fd, unsigned position) {
     struct struct_fd* target_struct_fd;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     target_struct_fd = get_struct_with_fd(fd);
 
     if (target_struct_fd != NULL)
         file_seek(target_struct_fd->file, position);
 
-    lock_release(&lock_for_filesys);
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 }
 
 /* Report current position in a file. */
@@ -302,7 +325,9 @@ unsigned tell (int fd) {
     struct struct_fd* target_struct_fd;
     int result;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     target_struct_fd = get_struct_with_fd(fd);
 
     if (target_struct_fd == NULL)
@@ -310,7 +335,8 @@ unsigned tell (int fd) {
     else
         result = (unsigned) file_tell(target_struct_fd->file);
 
-    lock_release(&lock_for_filesys);
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
     return result;
 }
 
@@ -318,7 +344,9 @@ unsigned tell (int fd) {
 void close (int fd) {
     struct struct_fd* target_struct_fd;
 
-    lock_acquire(&lock_for_filesys);
+    if (!lock_held_by_current_thread (&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     target_struct_fd = get_struct_with_fd(fd);
 
     if (target_struct_fd != NULL) {
@@ -327,7 +355,8 @@ void close (int fd) {
         free(target_struct_fd);
     }
 
-    lock_release(&lock_for_filesys);
+    if (lock_held_by_current_thread (&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 }
 
 /* The main system call interface */
@@ -346,6 +375,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
             f->R.rax = fork(f->R.rdi, f);
             break;
         case SYS_EXEC:
+            // if (!lock_held_by_current_thread (&lock_for_filesys))
+            //     lock_acquire(&lock_for_filesys);
             f->R.rax = exec(f->R.rdi);
             break;
         case SYS_WAIT:

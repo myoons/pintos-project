@@ -290,8 +290,9 @@ process_wait (tid_t child_tid) {
     if (!is_my_child)
         return -1;
     else {
-        list_remove(&(child_thread_to_wait->elem_for_child));
         sema_down(&(child_thread_to_wait->sema_parent_wait));
+        list_remove(&(child_thread_to_wait->elem_for_child));
+		sema_up(&(child_thread_to_wait->memory_lock));
     }
 
     return child_thread_to_wait->exit_status;
@@ -329,6 +330,7 @@ process_exit (void) {
 
     thread_current()->tf.R.rax=thread_current()->exit_status;
     sema_up(&(thread_current()->sema_parent_wait));
+	sema_down(&(thread_current()->memory_lock));
 }
 
 /* Free the current process's resources. */

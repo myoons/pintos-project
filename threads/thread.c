@@ -659,6 +659,7 @@ init_thread (struct thread *t, const char *name, int priority) {
     /* Initialize semaphore waiting parent threads */
     sema_init(&t->sema_parent_wait, 0);
     sema_init(&t->sema_for_fork, 0);
+	sema_init(&t->memory_lock, 0);
 
     t->curr_exec_file = NULL;
     t->ptr_thread_parent = NULL;

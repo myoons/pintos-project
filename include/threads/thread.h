@@ -118,6 +118,7 @@ struct thread {
     struct thread* ptr_thread_parent;   /* Pointer for parent thread. */
     struct semaphore sema_for_fork;     /* Semaphore to block thread while forking. */
     struct file* curr_exec_file;        /* File the corresponding thread is currently executing. */
+    struct semaphore memory_lock;
 
     /* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
