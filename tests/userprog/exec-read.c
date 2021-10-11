@@ -20,11 +20,11 @@ test_main (void)
   buffer = get_boundary_area () - sizeof sample / 2;
   CHECK ((byte_cnt = read (handle, buffer, 20)) == 20,
          "read \"sample.txt\" first 20 bytes");
-
   
   if ((pid = fork ("child-read"))){
     wait (pid);
 
+    CHECK ( 1==2, "222222222222open fail stoppp!!!!!!!!!");
     byte_cnt = read (handle, buffer + 20, sizeof sample - 21);
     if (byte_cnt != sizeof sample - 21)
       fail ("read() returned %d instead of %zu", byte_cnt, sizeof sample - 21);
@@ -35,11 +35,12 @@ test_main (void)
     } else {
       msg ("Parent success");
     }
-
     close (handle);
+
   } else {
     char cmd_line[128];
     snprintf (cmd_line, sizeof cmd_line, "%s %d", "child-read", handle);
     exec (cmd_line);
+    // CHECK ( 1==2, "222222222222open fail stoppp!!!!!!!!!");
   }
 }

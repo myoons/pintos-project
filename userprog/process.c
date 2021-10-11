@@ -229,12 +229,73 @@ error:
     thread_exit ();
 }
 
+
+/// 수정 필요
+static void 
+construct_stack(struct intr_frame *if_, int argc, char ** argv)
+{
+	char *addrs[128];
+	int length;
+	int i;
+	void * rsp;
+	rsp = (void *)if_->rsp;
+
+	for(i = argc - 1; i >= 0 ; i--){
+		length = strlen(argv[i])+1;
+		rsp = rsp - length;
+		memcpy(rsp, argv[i], length);
+		addrs[i] = rsp;
+	}
+
+	// word_align
+	while((uintptr_t)rsp % 8 != 0){
+		rsp--;
+		*(uint8_t *)(rsp) = 0;
+	}
+	
+	// argv[argc] == NULL
+	rsp = rsp - 8;
+	*(uint64_t *)rsp = 0;
+
+	for(i = argc - 1; i >= 0 ; i--){
+		rsp = rsp - 8;
+		*(char **)rsp = addrs[i];
+	}
+
+	if_->R.rsi = (uintptr_t)rsp;
+	if_->R.rdi = argc;
+
+	// return address
+	rsp = rsp - 8;
+	*(uint64_t *)rsp = 0;
+	if_->rsp = (uintptr_t)rsp;
+		
+}
+
+
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
+
+	// char cmdline[128];
+	// char * save_ptr;
+	// char *argv[128];
+	// int argc = 0;
+	// char * file_name;
+	//
+	/* parse command line */
+	// strlcpy(cmdline, f_name, PGSIZE);
+
+	// argv[0] = strtok_r(cmdline, " ", &save_ptr);
+	// while(argv[argc] != NULL){
+	// 	argv[++argc] = strtok_r(NULL, " ", &save_ptr);
+	// }
+
+	// file_name = argv[0];	
+	//
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -255,10 +316,13 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
-    // file_deny_write(thread_current()->curr_exec_file);
+	//
+	// construct_stack(&_if, argc, argv);
+	//
 
     /* Start switched process. */
 	do_iret (&_if);
+	
 	NOT_REACHED ();
 }
 
@@ -284,22 +348,29 @@ process_wait (tid_t child_tid) {
 
         while (current_list_elem != list_end(&(thread_current()->list_child_processes))) {
             struct thread* target_thread = list_entry (current_list_elem, struct thread, elem_for_child);
-            if (child_tid == target_thread->tid) {
+            if (target_thread->tid == child_tid) {
                 child_thread_to_wait = target_thread;
                 is_my_child = true;
                 break;
             }
+
             current_list_elem = list_next(current_list_elem);
         }
     }
 
-    if (!is_my_child)
-        return -1;
-    else {
-        list_remove(&(child_thread_to_wait->elem_for_child));
-        sema_down(&(child_thread_to_wait->sema_parent_wait));
-    }
+    if (!is_my_child){
+		return -1;
+	}
+	
+	if (child_thread_to_wait == thread_current()){
+		return -1;
+	}
 
+	sema_down(&(child_thread_to_wait->sema_parent_wait));
+	list_remove(&(child_thread_to_wait->elem_for_child));
+	// ASSERT(7>10);
+
+	
     return child_thread_to_wait->exit_status;
 }
 
@@ -324,7 +395,7 @@ process_exit (void) {
     }
 
     if (thread_current()->curr_exec_file != NULL)
-        file_deny_write(thread_current()->curr_exec_file);
+        file_allow_write(thread_current()->curr_exec_file);
 
     if (!list_empty(&(thread_current()->list_child_processes))) {
         current_list_elem = list_begin(&(thread_current()->list_child_processes));
@@ -547,12 +618,15 @@ load (const char *file_name, struct intr_frame *if_) {
     /* Address of stack pointer. */
     void** rsp = &(*if_).rsp;
     push_arguments(file_name, rsp, if_);
+
+	file_deny_write(file);
+    thread_current()->curr_exec_file = file;
+	
     success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */
-    thread_current()->curr_exec_file = file;
-	file_deny_write(file);
+	
 
     return success;
 }

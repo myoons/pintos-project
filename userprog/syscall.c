@@ -141,12 +141,13 @@ int exec (const char* file) {
     strlcpy (fn_copy, file, PGSIZE);
 
     int result = process_exec(fn_copy);
+    
     return result;
 }
 
 /* Wait for a child process to die. */
 int wait (pid_t pid) {
-    return process_wait(pid);
+    return process_wait((tid_t) pid);
 }
 
 /* Create a file. */
@@ -177,10 +178,6 @@ struct struct_fd* get_struct_with_fd (int fd) {
     struct list_elem* current_list_elem;
     struct struct_fd* to_find_struct_fd;
 
-    if (fd < 3) {
-        return NULL;
-    }
-
     if (!list_empty(&(thread_current()->list_struct_fds))) {
         current_list_elem = list_begin(&(thread_current()->list_struct_fds));
 
@@ -202,13 +199,14 @@ int put_fd_with_file (struct file* target_file) {
     struct thread* curr = thread_current();
     struct struct_fd* target_struct_fd = (struct struct_fd*) malloc(sizeof(struct struct_fd));
 
-    stored_fd = curr->next_fd;
+    stored_fd = curr->next_fd++;
     target_struct_fd->fd = stored_fd;
-    increase_fd();
+    // increase_fd();
 
     target_struct_fd->file = target_file;
 
     list_push_front(&(curr->list_struct_fds), &target_struct_fd->elem);
+
     return stored_fd;
 }
 
@@ -227,6 +225,7 @@ int open (const char* file) {
         result = put_fd_with_file(opened_file);
 
     lock_release(&lock_for_filesys);
+
     return result;
 }
 
@@ -257,14 +256,14 @@ int read (int fd, void* buffer, unsigned length) {
     lock_acquire(&lock_for_filesys);
 
     if (fd == 0) {
-        // result = (int) input_getc();
-        for (unsigned i=0; i<length; i++){
-			if (!put_user(buffer+i, input_getc())) {
-				lock_release(&lock_for_filesys);
-				exit(-1);
-			}
-		}
-		result = length;
+        result = (int) input_getc();
+        // for (unsigned i=0; i<length; i++){
+		// 	if (!put_user(buffer+i, input_getc())) {
+		// 		lock_release(&lock_for_filesys);
+		// 		exit(-1);
+		// 	}
+		// }
+		// result = length;
     }
     else if (fd == 1)
         result = -1;
