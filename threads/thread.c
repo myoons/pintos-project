@@ -472,12 +472,6 @@ thread_yield (void) {
 	intr_set_level (old_level);
 }
 
-void
-increase_fd (void) {
-    struct thread* curr = thread_current();
-    curr->next_fd++;
-}
-
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
@@ -643,11 +637,6 @@ init_thread (struct thread *t, const char *name, int priority) {
     /* Store original priority of the thread due to priority donation */
     t->original_priority = priority;
 
-    /* Initialize fd
-     * 0 : STDIN
-     * 1 : STDOUT */
-    t->next_fd = 2;
-
     /* Initialize exit status */
     t->exit_status = 0;
 
@@ -657,12 +646,11 @@ init_thread (struct thread *t, const char *name, int priority) {
     list_init(&t->list_struct_fds);
 
     /* Initialize semaphore waiting parent threads */
-    sema_init(&t->sema_parent_wait, 0);
     sema_init(&t->sema_for_fork, 0);
-	sema_init(&t->memory_lock, 0);
+    sema_init(&t->sema_for_free, 0);
+    sema_init(&t->sema_for_wait, 0);
 
     t->curr_exec_file = NULL;
-    t->ptr_thread_parent = NULL;
 
     /* Add to thread pool */
     list_push_front (&thread_pool, &t->elem_for_pool);

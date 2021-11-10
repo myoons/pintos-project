@@ -22,6 +22,8 @@
 #include "vm/vm.h"
 #endif
 
+#define FD_LIMIT 3 * (1<<9)
+
 static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
@@ -92,15 +94,36 @@ initd (void *f_name) {
  * TID_ERROR if the thread cannot be created. */
 tid_t
 process_fork (const char *name, struct intr_frame* if_) {
+    struct thread* curr;
+    struct thread* child;
+    struct list_elem* current_list_elem;
+
+    curr = thread_current();
     tid_t child_tid;
-    thread_current()->user_if = if_;
+
+    curr->user_if = if_;
 
     /* Create child thread. */
-    child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
-    sema_down(&thread_current()->sema_for_fork);
+    child_tid = thread_create(name, PRI_DEFAULT, __do_fork, thread_current());
 
-    struct list_elem* current_list_elem;
-    struct thread* target_thread;
+    if (!list_empty(&(curr->list_child_processes))) {
+        current_list_elem = list_begin(&(curr->list_child_processes));
+
+        while (current_list_elem != list_end(&(curr->list_child_processes))) {
+            struct thread* target_thread = list_entry (current_list_elem, struct thread, elem_for_child);
+            if (child_tid == target_thread->tid) {
+                child = target_thread;
+                break;
+            }
+            current_list_elem = list_next(current_list_elem);
+        }
+    }
+
+    /* Wait for child process to finish. */
+    sema_down(&child->sema_for_fork);
+
+    if (child->exit_status == -1)
+        return TID_ERROR;
 
     return child_tid;
 }
@@ -110,22 +133,26 @@ process_fork (const char *name, struct intr_frame* if_) {
  * pml4_for_each. This is only for the project 2. */
 static bool
 duplicate_pte (uint64_t *pte, void *va, void *aux) {
-	struct thread *current = thread_current ();
-	struct thread *parent = (struct thread *) aux;
-	void *parent_page;
-	void *newpage;
+	struct thread* current = thread_current ();
+	struct thread* parent = (struct thread *) aux;
+	void* parent_page;
+	void* newpage;
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
-    if (is_kern_pte(pte))
+    if (is_kernel_vaddr(va))
         return true;
 
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page (parent->pml4, va);
+    if (parent_page == NULL)
+        return false;
 
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
     newpage = palloc_get_page(PAL_USER);
+    if (newpage == NULL)
+        return false;
 
     /* 4. TODO: Duplicate parent's page to the new page and
      *    TODO: check whether parent's page is writable or not (set WRITABLE
@@ -184,6 +211,9 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 
+    if (parent->fds == FD_LIMIT)
+        goto error;
+
     struct list_elem* current_list_elem;
     struct struct_fd* struct_fd_for_child;
     struct struct_fd* target_struct_fd;
@@ -205,23 +235,21 @@ __do_fork (void *aux) {
         }
     }
 
-	process_init ();
-    current->ptr_thread_parent = parent;
-    sema_up(&(parent->sema_for_fork));
+    current->fds = parent->fds;
+    sema_up(&(current->sema_for_fork));
 
 	/* Finally, switch to the newly created process. */
     if (succ) {
-        current->exit_status=if_.R.rax;
+        current->exit_status = if_.R.rax;
         if_.R.rax = 0;
-        current->tf=if_;
-        do_iret (&if_);
+        current->tf = if_;
+        do_iret(&if_);
     }
 
 error:
-    current->ptr_thread_parent = parent;
-    current->exit_status = -1;
-    sema_up(&parent->sema_for_fork);
-    thread_exit ();
+    current->exit_status = TID_ERROR;
+    sema_up(&current->sema_for_fork);
+    exit(TID_ERROR);
 }
 
 /* Switch the current execution context to the f_name.
@@ -289,11 +317,11 @@ process_wait (tid_t child_tid) {
 
     if (!is_my_child)
         return -1;
-    else {
-        sema_down(&(child_thread_to_wait->sema_parent_wait));
-        list_remove(&(child_thread_to_wait->elem_for_child));
-		sema_up(&(child_thread_to_wait->memory_lock));
-    }
+
+    sema_down(&(child_thread_to_wait->sema_for_wait));
+
+    list_remove(&(child_thread_to_wait->elem_for_child));
+    sema_up(&(child_thread_to_wait->sema_for_free));
 
     return child_thread_to_wait->exit_status;
 }
@@ -329,8 +357,8 @@ process_exit (void) {
     }
 
     thread_current()->tf.R.rax=thread_current()->exit_status;
-    sema_up(&(thread_current()->sema_parent_wait));
-	sema_down(&(thread_current()->memory_lock));
+    sema_up(&(thread_current()->sema_for_wait));
+	sema_down(&(thread_current()->sema_for_free));
 }
 
 /* Free the current process's resources. */
