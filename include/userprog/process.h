@@ -10,4 +10,10 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
 
+struct file_aux {
+    struct file* file;
+    size_t read_bytes;
+    off_t ofs;
+};
+
 #endif /* userprog/process.h */

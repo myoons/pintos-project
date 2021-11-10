@@ -27,6 +27,8 @@ enum vm_type {
 #include "vm/uninit.h"
 #include "vm/anon.h"
 #include "vm/file.h"
+#include "lib/kernel/hash.h"
+#include "threads/vaddr.h"
 #ifdef EFILESYS
 #include "filesys/page_cache.h"
 #endif
@@ -46,6 +48,8 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
+    struct hash_elem elem_for_hash_table;         /* Element for hash table. */
+    bool writable;                                /* Is page writable. */
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -59,10 +63,14 @@ struct page {
 	};
 };
 
-/* The representation of "frame" */
+/* The representation of "frame"
+ * Page Table --> Page 의 va: Frame 의 kva 가 매칭되어 있다.
+ * */
 struct frame {
-	void *kva;
+	void *kva;  // Kernel Virtual Address, 실제 저장되는 주소는 kva - KERN_BASE
 	struct page *page;
+
+    struct list_elem elem_for_frame_list;
 };
 
 /* The function table for page operations.
@@ -70,9 +78,9 @@ struct frame {
  * Put the table of "method" into the struct's member, and
  * call it whenever you needed. */
 struct page_operations {
-	bool (*swap_in) (struct page *, void *);
-	bool (*swap_out) (struct page *);
-	void (*destroy) (struct page *);
+	bool (*swap_in) (struct page *, void *);  // Upload to RAM
+	bool (*swap_out) (struct page *);  // Remove from RAM --> To Swap Disk or Write to Disk
+	void (*destroy) (struct page *);  // Remove Page
 	enum vm_type type;
 };
 
@@ -85,7 +93,17 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+    /* TODO() */
+    struct hash* hash_table;
+
 };
+
+/*
+ * Supplemental page table 은 process 마다 생성된다. Page table 과 동일하게 va <-> pa mapping 지원
+ * 그러나 page 와 frame 구조체를 사용하여 기존 pml4 에서 담지 못하는 (용량 제한으로 인해) 정보들을 추가적으로 저장하기 위해 사용
+ *
+ */
+
 
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);

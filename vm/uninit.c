@@ -1,6 +1,6 @@
 /* uninit.c: Implementation of uninitialized page.
  *
- * All of the pages are born as uninit page. When the first page fault occurs,
+ * All of the pages arpe born as uninit page. When the first page fault occurs,
  * the handler chain calls uninit_initialize (page->operations.swap_in).
  * The uninit_initialize function transmutes the page into the specific page
  * object (anon, file, page_cache), by initializing the page object,and calls

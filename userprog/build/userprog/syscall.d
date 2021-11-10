@@ -6,9 +6,12 @@ userprog/syscall.o: ../../userprog/syscall.c \
  ../../include/lib/syscall-nr.h ../../include/threads/interrupt.h \
  ../../include/threads/thread.h ../../include/lib/kernel/list.h \
  ../../include/threads/synch.h ../../include/threads/loader.h \
- ../../include/userprog/gdt.h ../../include/filesys/file.h \
- ../../include/filesys/off_t.h ../../include/filesys/filesys.h \
- ../../include/userprog/process.h ../../include/threads/flags.h \
- ../../include/threads/malloc.h ../../include/threads/palloc.h \
+ ../../include/userprog/gdt.h ../../include/threads/flags.h \
  ../../include/intrinsic.h ../../include/threads/mmu.h \
- ../../include/threads/pte.h ../../include/threads/vaddr.h
+ ../../include/threads/pte.h ../../include/threads/vaddr.h \
+ ../../include/threads/init.h ../../include/threads/palloc.h \
+ ../../include/threads/mmu.h ../../include/userprog/process.h \
+ ../../include/userprog/tss.h ../../include/filesys/filesys.h \
+ ../../include/filesys/off_t.h ../../include/filesys/file.h \
+ ../../include/filesys/directory.h ../../include/devices/disk.h \
+ ../../include/lib/inttypes.h

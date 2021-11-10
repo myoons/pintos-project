@@ -5,20 +5,33 @@
 #include "threads/thread.h"
 #include "threads/loader.h"
 #include "userprog/gdt.h"
-#include "filesys/file.h"
-#include "filesys/filesys.h"
-#include "userprog/process.h"
 #include "threads/flags.h"
-#include "threads/malloc.h"
-#include "threads/palloc.h"
 #include "intrinsic.h"
+#include "threads/init.h"
+#include "threads/interrupt.h"
+#include "threads/palloc.h"
+#include "threads/thread.h"
+#include "threads/mmu.h"
+#include "threads/vaddr.h"
+#include "userprog/process.h"
+#include "userprog/gdt.h"
+#include "userprog/tss.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "filesys/directory.h"
+#include "filesys/off_t.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
+bool compare_fd(const struct list_elem *a, const struct list_elem *b, void *aux);
+struct file* fd_to_file(struct thread* curr, int fd);
 
-void is_valid_address (uint8_t * addr);
-struct struct_fd* get_struct_with_fd (int fd);
-int put_fd_with_file (struct file* target_file);
+/* An open file. */
+struct file {
+    struct inode *inode;        /* File's inode. */
+    off_t pos;                  /* Current position. */
+    bool deny_write;            /* Has file_deny_write() been called? */
+};
 
 /* System call.
  *
@@ -33,384 +46,273 @@ int put_fd_with_file (struct file* target_file);
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
-/* No internal synchronization. Concurrent accesses will interfere with one another.
- * You should use synchronization to ensure that only one process at a time is executing file system code. */
-struct lock lock_for_filesys;
 
 void
 syscall_init (void) {
-	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
-			((uint64_t)SEL_KCSEG) << 32);
-	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
-
-	/* The interrupt service rountine should not serve any interrupts
-	 * until the syscall_entry swaps the userland stack to the kernel
-	 * mode stack. Therefore, we masked the FLAG_FL. */
-	write_msr(MSR_SYSCALL_MASK,
-			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
-
-    /* Initialize lock for file system. */
-    lock_init(&lock_for_filesys);
-}
-
-/* Reads a byte at user virtual address UADDR.
- * UADDR must be below KERN_BASE.
- * Returns the byte value if successful, -1 if a segfault
- * occurred. */
-static int64_t
-get_user (const uint8_t *uaddr) {
-    int64_t result;
-    __asm __volatile (
-    "movabsq $done_get, %0\n"
-    "movzbq %1, %0\n"
-    "done_get:\n"
-    : "=&a" (result) : "m" (*uaddr));
-    return result;
-}
-
-/* Writes BYTE to user address UDST.
- * UDST must be below KERN_BASE.
- * Returns true if successful, false if a segfault occurred. */
-static bool
-put_user (uint8_t *udst, uint8_t byte) {
-    int64_t error_code;
-    __asm __volatile (
-    "movabsq $done_put, %0\n"
-    "movb %b2, %1\n"
-    "done_put:\n"
-    : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-    return error_code != -1;
-}
-
-void
-is_valid_address (uint8_t *uaddr) {
-    if ( get_user(uaddr) == -1 ){
-        exit(-1);
-    }
-}
-
-/* Halt the operating system. */
-void halt (void) {
-    power_off();
-
-    /* Make sure the thread is exited. */
-    NOT_REACHED();
-}
-
-/* Terminate this process. */
-void exit(int status) {
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
-    thread_current()->exit_status = status;
-    printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
-    thread_exit();
-
-    /* Make sure the thread is exited. */
-    NOT_REACHED();
-}
-
-/* Clone current process. */
-pid_t fork (const char* thread_name, struct intr_frame* f) {
-    return (pid_t) process_fork(thread_name, f);
-}
-
-/* Switch current process. */
-int exec (const char* file) {
-    is_valid_address((uint8_t *) file);
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    /* Copy file name for parsing; It should not affect other jobs using file_name */
-    char* fn_copy;
-    fn_copy = (char*) palloc_get_page (PAL_USER);
-    if (fn_copy == NULL)
-        return TID_ERROR;
-
-    strlcpy (fn_copy, file, PGSIZE);
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
-    int result = process_exec(fn_copy);
-    return result;
-}
-
-/* Wait for a child process to die. */
-int wait (pid_t pid) {
-    return process_wait(pid);
-}
-
-/* Create a file. */
-bool create (const char* file, unsigned initial_size) {
-    is_valid_address((uint8_t *) file);
-    bool result;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    result = filesys_create(file, initial_size);
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
-    return result;
-}
-
-/* Delete a file. */
-bool remove (const char* file) {
-    is_valid_address((uint8_t *) file);
-    bool result;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    result = filesys_remove(file);
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
-    return result;
-}
-
-struct struct_fd* get_struct_with_fd (int fd) {
-    struct list_elem* current_list_elem;
-    struct struct_fd* to_find_struct_fd;
-
-    if (!list_empty(&(thread_current()->list_struct_fds))) {
-        current_list_elem = list_begin(&(thread_current()->list_struct_fds));
-
-        while (current_list_elem != list_end(&(thread_current()->list_struct_fds))) {
-            struct struct_fd* target_struct_fd = list_entry (current_list_elem, struct struct_fd, elem);
-            if (fd == target_struct_fd->fd) {
-                to_find_struct_fd = target_struct_fd;
-                break;
-            }
-            current_list_elem = list_next(current_list_elem);
-        }
-    }
-
-    return to_find_struct_fd;
-}
-
-int put_fd_with_file (struct file* target_file) {
-    int stored_fd;
-    struct thread* curr = thread_current();
-    struct struct_fd* target_struct_fd = (struct struct_fd*) malloc(sizeof(struct struct_fd));
-
-    stored_fd = curr->next_fd;
-    target_struct_fd->fd = stored_fd;
-    increase_fd();
-
-    target_struct_fd->file = target_file;
-
-    list_push_front(&(curr->list_struct_fds), &target_struct_fd->elem);
-    return stored_fd;
-}
-
-/* Open a file. */
-int open (const char* file) {
-    is_valid_address((uint8_t *) file);
-    struct file* opened_file;
-    int result;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-    opened_file = filesys_open(file);
-
-    if (opened_file == NULL)
-        result = -1;
-    else
-        result = put_fd_with_file(opened_file);
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-    return result;
-}
-
-/* Obtain a file's size. */
-int filesize (int fd) {
-    struct struct_fd* target_struct_fd;
-    int result;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-    target_struct_fd = get_struct_with_fd(fd);
-
-    if (target_struct_fd == NULL)
-        result = -1;
-    else
-        result = (int) file_length(target_struct_fd->file);
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-    return result;
-}
-
-/* Read from a file. */
-int read (int fd, void* buffer, unsigned length) {
-    is_valid_address((uint8_t *) buffer);
-    struct struct_fd* target_struct_fd;
-    int result;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    if (fd == 0)
-        result = (int) input_getc();
-    else if (fd == 1)
-        result = -1;
-    else {
-        target_struct_fd = get_struct_with_fd(fd);
-
-        if (target_struct_fd == NULL)
-            result = -1;
-        else
-            result = (int) file_read(target_struct_fd->file, buffer, length);
-    }
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-    return result;
-}
-
-/* Write to a file. */
-int write (int fd, const void* buffer, unsigned length) {
-    is_valid_address((uint8_t *) buffer);
-    struct struct_fd* target_struct_fd;
-    int result;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    if (fd == 0)
-        result = -1;
-    else if (fd == 1) {
-        putbuf(buffer, length);
-        result = length;
-    }
-    else {
-        target_struct_fd = get_struct_with_fd(fd);
-
-        if (target_struct_fd == NULL)
-            result = -1;
-        else
-            result = (int) file_write(target_struct_fd->file, buffer, length);
-    }
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-    return result;
-}
-
-/* Change position in a file. */
-void seek (int fd, unsigned position) {
-    struct struct_fd* target_struct_fd;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    target_struct_fd = get_struct_with_fd(fd);
-
-    if (target_struct_fd != NULL)
-        file_seek(target_struct_fd->file, position);
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-}
-
-/* Report current position in a file. */
-unsigned tell (int fd) {
-    struct struct_fd* target_struct_fd;
-    int result;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    target_struct_fd = get_struct_with_fd(fd);
-
-    if (target_struct_fd == NULL)
-        result = -1;
-    else
-        result = (unsigned) file_tell(target_struct_fd->file);
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-    return result;
-}
-
-/* Close a file. */
-void close (int fd) {
-    struct struct_fd* target_struct_fd;
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
-    target_struct_fd = get_struct_with_fd(fd);
-
-    if (target_struct_fd != NULL) {
-        file_close(target_struct_fd->file);
-        list_remove(&(target_struct_fd->elem));
-        free(target_struct_fd);
-    }
-
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
+    lock_init(&lock_access_file);
+    list_init(&open_files);
+    write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
+                        ((uint64_t)SEL_KCSEG) << 32);
+    write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
+
+    /* The interrupt service rountine should not serve any interrupts
+     * until the syscall_entry swaps the userland stack to the kernel
+     * mode stack. Therefore, we masked the FLAG_FL. */
+    write_msr(MSR_SYSCALL_MASK,
+              FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
 /* The main system call interface */
 void
-syscall_handler (struct intr_frame *f UNUSED) {
-    /* Implementation Start */
-    uint64_t syscall_number =  f->R.rax;
+syscall_handler (struct intr_frame *f) {
+    // TODO: Your implementation goes here.
+    /*need to modify(corner case + alpha)*/
+    struct thread* current = thread_current();
+    struct file* file;
+    struct file_fd* ffd;
+    struct list_elem* pivot;
+    struct dir* dir = dir_open_root();
+    struct inode* inode=NULL;
+    char* name = current->name;
+    int fd=2;
+    tid_t tid;
+    switch(f->R.rax){
+        case SYS_HALT://void halt (void);
+            //Halt the oprating system (terminating pintos)
+            power_off();
+            break;
 
-    switch (syscall_number) {
-
-        case SYS_HALT:
-            halt();
-        case SYS_EXIT:
-            exit(f->R.rdi);
-        case SYS_FORK:
-            f->R.rax = fork(f->R.rdi, f);
-            break;
-        case SYS_EXEC:
-            // if (!lock_held_by_current_thread (&lock_for_filesys))
-            //     lock_acquire(&lock_for_filesys);
-            f->R.rax = exec(f->R.rdi);
-            break;
-        case SYS_WAIT:
-            f->R.rax = wait(f->R.rdi);
-            break;
-        case SYS_CREATE:
-            f->R.rax = create(f->R.rdi, f->R.rsi);
-            break;
-        case SYS_REMOVE:
-            f->R.rax = remove(f->R.rdi);
-            break;
-        case SYS_OPEN:
-            f->R.rax = open(f->R.rdi);
-            break;
-        case SYS_FILESIZE:
-            f->R.rax = filesize(f->R.rdi);
-            break;
-        case SYS_READ:
-            f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-            break;
-        case SYS_WRITE:
-            f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-            break;
-        case SYS_SEEK:
-            seek(f->R.rdi, f->R.rsi);
-            break;
-        case SYS_TELL:
-            tell(f->R.rdi);
-            break;
-        case SYS_CLOSE:
-            close(f->R.rdi);
-            break;
-        default:
+        case SYS_EXIT://void exit (int status);
+            // Terminating this process(current user program), return status to the kernel
+            current->exit_status=f->R.rdi;
+            printf("%s: exit(%d)\n", current->name, current->exit_status);
             thread_exit();
             break;
+
+        case SYS_FORK://pid_t fork (const char *thread_name);
+            // need to modify
+            tid = process_fork(f->R.rdi, f);
+            f->R.rax=tid;
+            break;
+
+        case SYS_EXEC://int exec (const char *cmd_line);
+            // lock_acquire(&lock_access_file);
+            f->R.rax=process_exec(f->R.rdi);
+            // lock_release(&lock_access_file);
+            break;
+
+        case SYS_WAIT:
+            f->R.rax=process_wait(f->R.rdi);
+            break;
+
+        case SYS_CREATE:
+            if (is_kernel_vaddr(f->R.rdi)|| f->R.rdi==NULL){
+                f->R.rax=false;
+                current->exit_status=-1;
+                printf("%s: exit(%d)\n", current->name, current->exit_status);
+                thread_exit();
+                break;
+            }
+            lock_acquire(&lock_access_file);
+            if (dir_lookup(dir, f->R.rdi, &inode)){
+                f->R.rax=false;
+                lock_release(&lock_access_file);
+                break;
+            }
+            lock_release(&lock_access_file);
+
+            f->R.rax=filesys_create(f->R.rdi, f->R.rsi);
+            break;
+
+        case SYS_REMOVE:
+            f->R.rax=filesys_remove(f->R.rdi);
+            break;
+
+        case SYS_OPEN:
+            if (is_kernel_vaddr(f->R.rdi)|| f->R.rdi==NULL || f->R.rdi==""){
+                f->R.rax=-1;
+                current->exit_status=-1;
+                printf("%s: exit(%d)\n", current->name, current->exit_status);
+                thread_exit();
+                break;
+            }
+            //if R.rdi is kernel region or NULL, return -1
+            lock_acquire(&lock_access_file);
+            file=filesys_open(f->R.rdi);
+
+
+            if (file==NULL){
+                f->R.rax=-1;
+                current->exit_status=-1;
+                lock_release(&lock_access_file);
+                break;
+            }
+
+            ffd=malloc(sizeof(struct file_fd));
+            ffd->file=file;
+            ffd->fd=-1;
+
+            if (list_empty(&current->list_struct_fds)){
+                ffd->fd=fd;
+                // if (strcmp(thread_name(), f->R.rdi)==0){
+                // 	file_deny_write(ffd->file);
+                // }
+            }
+            else{
+                for (pivot=list_begin(&current->list_struct_fds);pivot!=list_end(&current->list_struct_fds);
+                     pivot=list_next(pivot)){
+                    if (list_entry(pivot, struct file_fd, fd_elem)->fd>fd){
+                        // if (strcmp(thread_name(), f-> R.rdi)==0) file_deny_write(ffd->file);
+                        ffd->fd=fd;
+                        break;
+                    }
+                    fd++;
+                }
+                if (ffd->fd==-1) ffd->fd=fd;
+            }
+
+            list_insert_ordered(&current->list_struct_fds, &ffd->fd_elem, compare_fd, NULL);
+            f->R.rax=ffd->fd;
+            lock_release(&lock_access_file);
+            break;
+
+        case SYS_FILESIZE:
+            file = fd_to_file(current, f->R.rdi);
+            f->R.rax = file_length(file);
+            break;
+
+        case SYS_READ:
+            check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
+            if (f->R.rdi==NULL){
+                f->R.rax=-1;
+                current->exit_status=-1;
+                printf("%s: exit(%d)\n", current->name, current->exit_status);
+                thread_exit();
+                break;
+            }
+
+            //STDIN
+            if (f->R.rdi==0) input_getc(f->R.rsi, f->R.rdx);
+            else if (f->R.rdi>1){
+                lock_acquire(&lock_access_file);
+                file = fd_to_file(current, f->R.rdi);
+                f->R.rax = file_read(file, f->R.rsi, f->R.rdx);//need to implement file descriptor -> access file
+                lock_release(&lock_access_file);
+            }
+
+            break;
+
+        case SYS_WRITE:
+            check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
+            if (f->R.rdi==NULL){
+                f->R.rax=-1;
+                current->exit_status=-1;
+                printf("%s: exit(%d)\n", current->name, current->exit_status);
+                thread_exit();
+                break;
+            }
+
+            if (f->R.rdi==1) putbuf(f->R.rsi, f->R.rdx);
+            else if (f->R.rdi>1){
+                lock_acquire(&lock_access_file);
+                file = fd_to_file(current, f->R.rdi);
+                // if (file -> deny_write){
+                // 	file_deny_write(file);
+                // 	// f->R.rax=0;
+                // 	// lock_release(&lock_access_file);
+                // 	// break;
+                // 	}
+                f->R.rax=file_write(file, f->R.rsi, f->R.rdx);
+                lock_release(&lock_access_file);
+            }
+            break;
+
+        case SYS_SEEK:
+            // lock_acquire(&lock_access_file);
+            file = fd_to_file(current, f->R.rdi);
+            file_seek(file, f->R.rsi);
+            // lock_release(&lock_access_file);
+            break;
+
+        case SYS_TELL:
+            // lock_acquire(&lock_access_file);
+            file = fd_to_file(current, f->R.rdi);
+            f->R.rax=file_tell(file);
+            // lock_release(&lock_access_file);
+            break;
+
+        case SYS_CLOSE:
+            lock_acquire(&lock_access_file);
+            file = fd_to_file(current, f->R.rdi);
+            //null => exit -1 add!!!!!
+            if (!file==NULL){
+                // if(file->deny_write) file_deny_write(file);
+                file_close(file); //allow_write
+
+                for (pivot=list_begin(&current->list_struct_fds);pivot!=list_end(&current->list_struct_fds);
+                     pivot=list_next(pivot)){
+                    ffd=list_entry(pivot, struct file_fd, fd_elem);
+                    if (ffd->fd==fd){
+                        break;
+                    }
+                }
+
+                list_remove(&ffd->fd_elem);
+                free(ffd);
+            }
+
+            lock_release(&lock_access_file);
+            break;
+
+        default:
+            printf ("system call!\n");
+            thread_exit ();
+            break;
+    }
+}
+
+bool
+compare_fd(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+    int a_fd = list_entry(a, struct file_fd, fd_elem) -> fd;
+    int b_fd = list_entry(b, struct file_fd, fd_elem) -> fd;
+    return a_fd<b_fd;
+}
+
+struct file* fd_to_file(struct thread* curr, int fd){
+    struct file_fd* ffd;
+    struct file* file=NULL;
+    struct list_elem* pivot;
+    for (pivot=list_begin(&curr->list_struct_fds);pivot!=list_end(&curr->list_struct_fds);
+         pivot=list_next(pivot)){
+        ffd=list_entry(pivot, struct file_fd, fd_elem);
+        if (ffd->fd==fd){
+            file=ffd->file;
+            break;
+        }
+    }
+    return file;
+
+}
+
+struct page * check_address(void *addr) {
+    if (is_kernel_vaddr(addr))
+    {
+        thread_current()->exit_status = -1;
+        thread_exit();
+    }
+    return spt_find_page(&thread_current()->spt, addr);
+}
+
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
+    for (int i = 0; i < size; i++) {
+        struct page* page = check_address(buffer + i);    // 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
+        if(page == NULL) {
+            thread_current()->exit_status = -1;
+            thread_exit();
+        }
+        if(to_write == true && page->writable == false) {
+            thread_current()->exit_status = -1;
+            thread_exit();
+        }
     }
 }
