@@ -18,7 +18,8 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 bool less_fd(const struct list_elem *a, const struct list_elem *b, void *aux);
 
-struct page* is_valid_address (uint64_t* addr);
+void is_valid_address (uint64_t* addr);
+struct page* get_page_from_address (uint64_t* addr);
 void is_valid_buffer(void* buffer, unsigned length, bool writable);
 struct struct_fd* get_struct_with_fd (int fd);
 int put_fd_with_file (struct file* target_file);
@@ -56,17 +57,20 @@ syscall_init (void) {
     lock_init(&lock_for_filesys);
 }
 
+void is_valid_address(uint64_t* uaddr)
+{
+    if (uaddr == NULL || !(is_user_vaddr(uaddr)) || pml4_get_page(thread_current()->pml4, uaddr) == NULL)
+        exit(-1);
+}
+
 struct page*
-is_valid_address (uint64_t* uaddr) {
+get_page_from_address (uint64_t* uaddr) {
     struct page* page;
 
     if (is_kernel_vaddr(uaddr))
         exit(-1);
 
     page = spt_find_page(&thread_current()->spt, uaddr);
-    if (page == NULL)
-        exit(-1);
-
     return page;
 }
 
@@ -75,7 +79,7 @@ is_valid_buffer(void* buffer, unsigned length, bool write) {
     struct page* page;
 
     for (int i=0; i<length; i++) {
-        page = is_valid_address(buffer+i);
+        page = get_page_from_address(buffer+i);
 
         if (write == true && page->writable == false)
             exit(-1);
@@ -104,14 +108,6 @@ void exit(int status) {
 
     /* Make sure the thread is exited. */
     NOT_REACHED();
-}
-
-/* Clone current process. */
-pid_t fork (const char* thread_name, struct intr_frame* f) {
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
-    return (pid_t) process_fork(thread_name, f);
 }
 
 /* Switch current process. */
@@ -411,7 +407,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
         case SYS_EXIT:
             exit(f->R.rdi);
         case SYS_FORK:
-            f->R.rax = fork(f->R.rdi, f);
+            f->R.rax = process_fork(f->R.rdi, f);
             break;
         case SYS_EXEC:
             f->R.rax = exec(f->R.rdi);

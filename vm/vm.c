@@ -9,7 +9,6 @@ static uint64_t get_value_from_hash_table (const struct hash_elem* target_elem, 
 static bool compare_hash_value (const struct hash_elem* first_elem, const struct hash_elem* second_elem, void* aux UNUSED);
 
 struct list frame_list;
-typedef bool (*INITIALIZER)(struct page* , enum vm_type, void*);
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -54,10 +53,9 @@ bool
 vm_alloc_page_with_initializer (enum vm_type type, void* upage, bool writable,
 		vm_initializer* init, void* aux) {
 
-	ASSERT (VM_TYPE(type) != VM_UNINIT)
+    ASSERT (VM_TYPE(type) != VM_UNINIT)
 
     struct page* new_page;
-    INITIALIZER initializer;
     struct supplemental_page_table* spt = &thread_current()->spt;
 
 	/* Check wheter the upage is already occupied or not. */
@@ -66,18 +64,16 @@ vm_alloc_page_with_initializer (enum vm_type type, void* upage, bool writable,
 
         switch (VM_TYPE(type)) {
             case VM_ANON:
-                initializer = anon_initializer;
+                uninit_new(new_page, upage, init, type, aux, anon_initializer);
                 break;
             case VM_FILE:
-                initializer = file_backed_initializer;
+                uninit_new(new_page, upage, init, type, aux, file_backed_initializer);
                 break;
         }
 
-        uninit_new(new_page, upage, init, type, aux, initializer);
-
         new_page->writable = writable;
-
-        return spt_insert_page(spt, new_page);
+        spt_insert_page(spt, new_page);
+        return true;
 	}
 err:
 	return false;
@@ -99,11 +95,9 @@ spt_find_page (struct supplemental_page_table* spt, void* va) {
     /* Find the target hash element of target va. */
     target_hash_elem = hash_find(spt->hash_table, &(dummy_page->elem_for_hash_table));
 
-    /* Free dummy page since we got target hash element. */
-    free(dummy_page);
-
-    if (target_hash_elem == NULL)
+    if (target_hash_elem == NULL) {
         return NULL;
+    }
 
     /* Get target page using target hash element. */
     target_page = hash_entry(target_hash_elem, struct page, elem_for_hash_table);
@@ -113,7 +107,7 @@ spt_find_page (struct supplemental_page_table* spt, void* va) {
 /* Insert PAGE into spt with validation. */
 bool
 spt_insert_page (struct supplemental_page_table *spt, struct page *page) {
-	int succ = false;
+	int succ = true;
     struct hash_elem* return_hash_elem;
 
     /* Inserts new page to hash table using hash_elem.
@@ -121,9 +115,9 @@ spt_insert_page (struct supplemental_page_table *spt, struct page *page) {
     return_hash_elem = hash_insert (spt->hash_table, &(page->elem_for_hash_table));
 
     /* If return value is NULL, successfully inserted. */
-    if (return_hash_elem != NULL)
-        succ = true;
-
+    if (return_hash_elem != NULL) {
+        succ = false;
+    }
 	return succ;
 }
 
@@ -200,7 +194,12 @@ vm_get_frame (void) {
 
 /* Growing the stack. */
 static void
-vm_stack_growth (void *addr UNUSED) {
+vm_stack_growth (void *addr) {
+    if (vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1))
+    {
+        vm_claim_page(addr);
+        thread_current()->stack_bottom -= PGSIZE;
+    }
 }
 
 /* Handle the fault on write_protected page */
@@ -212,33 +211,21 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame* f, void *addr,
 		bool user UNUSED, bool write UNUSED, bool not_present) {
-    bool result;
     void* thread_rsp;
-    struct page* page = NULL;
-    struct supplemental_page_table* spt = &thread_current()->spt;
 
     /* Virtual address should be in user pool. */
-    if (is_kernel_vaddr(addr))
+    if (is_kernel_vaddr(addr) && user)
         return false;
-
 
     if (is_kernel_vaddr(f->rsp))
         thread_rsp = thread_current()->rsp;
     else
         thread_rsp = f->rsp;
 
-    if (not_present) {
-        result = vm_claim_page(addr);
-        if (result)
-            return true;
+    if (thread_rsp - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK)
+        vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
 
-        if (thread_rsp - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) {
-            vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
-            return true;
-        }
-    }
-
-    return false;
+    return vm_claim_page(addr);
 }
 
 /* Free the page.
@@ -253,7 +240,7 @@ vm_dealloc_page (struct page *page) {
 bool
 vm_claim_page (void *va) {
 	struct page* page;
-    page = spt_find_page(&(thread_current()->spt), va);
+    page = spt_find_page(&(thread_current()->spt), va);  // Error because this returns NULL
 
     /* Error */
     if (page == NULL)
@@ -266,17 +253,20 @@ vm_claim_page (void *va) {
 static bool
 vm_do_claim_page (struct page* page) {
     bool result;
-
     /* Claim the page that allocate on VA. */
     struct frame* frame = vm_get_frame();
+
+    ASSERT (page != NULL);
+    ASSERT (frame != NULL);
 
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
     result = pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable);
+
     if (result)
-        return swap_in(page, frame->kva);
+        result = swap_in(page, frame->kva);
 
     return result;
 }
@@ -284,10 +274,12 @@ vm_do_claim_page (struct page* page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt) {
+    struct hash* hash_table = (struct hash*) malloc(sizeof(struct hash));
 
     /* Initialize hash table used in supplemental page table. */
-    hash_init(spt->hash_table, get_value_from_hash_table, compare_hash_value, NULL);
+    hash_init(hash_table, get_value_from_hash_table, compare_hash_value, NULL);
 
+    spt->hash_table = hash_table;
 }
 
 /* Copy supplemental page table from src to dst */

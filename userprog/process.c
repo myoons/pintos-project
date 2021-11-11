@@ -220,6 +220,7 @@ __do_fork (void *aux) {
         }
     }
 
+    current->spt = parent->spt;
     current->fds = parent->fds;
     sema_up(&(current->sema_for_fork));
 
@@ -326,7 +327,9 @@ process_exit (void) {
         current_list_elem = list_pop_front(&thread_current()->list_struct_fds);
         target_struct_fd = list_entry(current_list_elem, struct struct_fd, elem);
 
-        file_close(target_struct_fd->file);
+        if (target_struct_fd->file != NULL)
+            file_close(target_struct_fd->file);
+
         free(target_struct_fd);
     }
 
@@ -339,6 +342,9 @@ process_exit (void) {
         while (current_list_elem != list_end(&(thread_current()->list_child_processes)))
             current_list_elem = list_remove(current_list_elem);
     }
+
+    if (thread_current()->curr_exec_file != NULL)
+        file_allow_write(thread_current()->curr_exec_file);
 
     thread_current()->tf.R.rax=thread_current()->exit_status;
     sema_up(&(thread_current()->sema_for_wait));
@@ -554,9 +560,8 @@ load (const char *file_name, struct intr_frame *if_) {
     void** rsp = &(*if_).rsp;
     push_arguments(file_name, rsp, if_);
     success = true;
-
 done:
-	/* We arrive here whether the load is successful or not. */
+    /* We arrive here whether the load is successful or not. */
     thread_current()->curr_exec_file = file;
     return success;
 }
@@ -813,7 +818,7 @@ lazy_load_segment (struct page *page, void *aux) {
 
     ofs = faux->ofs;
     file = faux->file;
-    should_read_bytes = faux->read_bytes;
+    should_read_bytes = faux->read_bytes < PGSIZE ? faux->read_bytes  : PGSIZE;
     should_zero_bytes = PGSIZE - should_read_bytes;
 
     /* Change current position in FILE. */
@@ -827,7 +832,7 @@ lazy_load_segment (struct page *page, void *aux) {
         return false;
     }
 
-    memset(page->frame->kva + should_zero_bytes, 0, should_zero_bytes);
+    memset(page->frame->kva + should_read_bytes, 0, should_zero_bytes);
     return true;
 }
 
@@ -871,7 +876,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+        ofs += page_read_bytes;
 	}
+
 	return true;
 }
 

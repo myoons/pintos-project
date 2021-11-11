@@ -10,4 +10,4 @@ threads/thread.o: ../../threads/thread.c ../../include/threads/thread.h \
  ../../include/threads/loader.h ../../include/intrinsic.h \
  ../../include/threads/mmu.h ../../include/threads/pte.h \
  ../../include/devices/timer.h ../../include/lib/round.h \
- ../../include/userprog/process.h
+ ../../include/userprog/process.h ../../include/lib/user/syscall.h
