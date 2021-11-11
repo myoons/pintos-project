@@ -220,7 +220,6 @@ __do_fork (void *aux) {
         }
     }
 
-    current->spt = parent->spt;
     current->fds = parent->fds;
     sema_up(&(current->sema_for_fork));
 
@@ -318,7 +317,6 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-    process_cleanup ();
 
     struct list_elem* current_list_elem;
     struct struct_fd* target_struct_fd;
@@ -346,6 +344,8 @@ process_exit (void) {
     if (thread_current()->curr_exec_file != NULL)
         file_allow_write(thread_current()->curr_exec_file);
 
+    process_cleanup();
+
     thread_current()->tf.R.rax=thread_current()->exit_status;
     sema_up(&(thread_current()->sema_for_wait));
 	sema_down(&(thread_current()->sema_for_free));
@@ -357,7 +357,11 @@ process_cleanup (void) {
 	struct thread *curr = thread_current ();
 
 #ifdef VM
-	supplemental_page_table_kill (&curr->spt);
+    supplemental_page_table_kill (&curr->spt);
+
+    /* Returns true if H contains no elements, false otherwise. */
+//    if (!hash_empty((&curr->spt)->hash_table))
+//	    supplemental_page_table_kill (&curr->spt);
 #endif
 
 	uint64_t *pml4;
@@ -442,7 +446,6 @@ struct ELF64_PHDR {
 #define ELF ELF64_hdr
 #define Phdr ELF64_PHDR
 
-static bool setup_stack (struct intr_frame *if_);
 static bool validate_segment (const struct Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
@@ -766,7 +769,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a minimal stack by mapping a zeroed page at the USER_STACK */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	uint8_t *kpage;
 	bool success = false;
@@ -818,7 +821,7 @@ lazy_load_segment (struct page *page, void *aux) {
 
     ofs = faux->ofs;
     file = faux->file;
-    should_read_bytes = faux->read_bytes < PGSIZE ? faux->read_bytes  : PGSIZE;
+    should_read_bytes = faux->read_bytes < PGSIZE ? faux->read_bytes : PGSIZE;
     should_zero_bytes = PGSIZE - should_read_bytes;
 
     /* Change current position in FILE. */
@@ -857,6 +860,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
 
+    struct file_aux* faux;
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -864,7 +868,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-		struct file_aux* faux = (struct file_aux*) malloc(sizeof(struct file_aux));
+        faux = (struct file_aux*) malloc(sizeof(struct file_aux));
 		faux->ofs = ofs;
 		faux->file = file;
 		faux->read_bytes = page_read_bytes;
@@ -883,7 +887,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
     struct thread* curr = thread_current();

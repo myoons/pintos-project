@@ -3,6 +3,7 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "userprog/process.h"
 
 
 static uint64_t get_value_from_hash_table (const struct hash_elem* target_elem, void* aux UNUSED);
@@ -27,7 +28,7 @@ vm_init (void) {
     list_init(&frame_list);
 }
 
-/* Get the type of the page. This function is useful if you want to know the
+/* Get the type of RRthe page. This function is useful if you want to know the
  * type of the page after it will be initialized.
  * This function is fully implemented now. */
 enum vm_type
@@ -45,6 +46,7 @@ page_get_type (struct page *page) {
 static struct frame* vm_get_victim (void);
 static bool vm_do_claim_page (struct page *page);
 static struct frame* vm_evict_frame (void);
+static void hash_destroy_func (struct hash_elem* e, void* aux UNUSED);
 
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
@@ -167,7 +169,6 @@ vm_evict_frame (void) {
 static struct frame *
 vm_get_frame (void) {
 	struct frame* new_frame = NULL;
-	/* TODO: Fill this function. */
 
     /* Allocate memory for new frame. */
     new_frame = (struct frame*) malloc(sizeof(struct frame));
@@ -291,15 +292,66 @@ supplemental_page_table_init (struct supplemental_page_table *spt) {
 
 /* Copy supplemental page table from src to dst */
 bool
-supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-		struct supplemental_page_table *src UNUSED) {
+supplemental_page_table_copy (struct supplemental_page_table *dst, struct supplemental_page_table *src) {
+    void* source_aux;
+    void* source_page_va;
+    bool source_page_writable;
+    enum vm_type source_page_type;
+    vm_initializer* source_page_initializer;
+
+    struct hash_iterator iter_hash;
+    hash_first(&iter_hash, src->hash_table);
+    while (hash_next(&iter_hash)) {
+        struct page* source_page = hash_entry(hash_cur(&iter_hash), struct page, elem_for_hash_table);
+
+        source_aux = source_page->uninit.aux;
+        source_page_va = source_page->va;
+        source_page_writable = source_page->writable;
+        source_page_type = page_get_type(source_page);
+        source_page_initializer= source_page->uninit.init;
+
+        if (source_page->uninit.type & VM_MARKER_0)
+            setup_stack(&thread_current()->tf);
+        else if (source_page->operations->type == VM_UNINIT) {
+            if (!vm_alloc_page_with_initializer(source_page_type, source_page_va, source_page_writable, source_page_initializer, source_aux))
+                return false;
+        }
+        else {
+            if(!vm_alloc_page(source_page_type, source_page_va, source_page_writable))
+                return false;
+
+            if(!vm_claim_page(source_page_va))
+                return false;
+        }
+
+        if (source_page->operations->type != VM_UNINIT) {
+            struct page* dest_page = spt_find_page(dst, source_page_va);
+            memcpy(dest_page->frame->kva, source_page->frame->kva, PGSIZE);
+        }
+
+    }
+}
+
+static void
+hash_destroy_func(struct hash_elem* target_elem, void* aux UNUSED) {
+    const struct page* target_page = hash_entry(target_elem, struct page, elem_for_hash_table);
+    free(target_page);
 }
 
 /* Free the resource hold by the supplemental page table */
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
-	/* TODO: Destroy all the supplemental_page_table hold by thread and
-	 * TODO: writeback all the modified contents to the storage. */
+//    struct hash_iterator iter_hash;
+//
+//    /* Initializes I for iterating hash table H. */
+//    hash_first(&iter_hash, spt->hash_table);
+//    while (hash_next(&iter_hash)) {
+//        struct page* target_page = hash_entry(hash_cur(&iter_hash), struct page, elem_for_hash_table);
+//        if (target_page->operations->type == VM_FILE)
+//            do_munmap(target_page->va);
+//    }
+//
+//    hash_destroy(spt->hash_table, hash_destroy_func);
 }
 
 static uint64_t

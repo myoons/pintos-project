@@ -23,6 +23,7 @@ struct page* get_page_from_address (uint64_t* addr);
 void is_valid_buffer(void* buffer, unsigned length, bool writable);
 struct struct_fd* get_struct_with_fd (int fd);
 int put_fd_with_file (struct file* target_file);
+bool is_valid_mmap(void* addr, size_t length, off_t ofs, struct file* target_file);
 
 /* System call.
  *
@@ -394,30 +395,44 @@ void close (int fd) {
         lock_release(&lock_for_filesys);
 }
 
-void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+bool is_valid_mmap(void* addr, size_t length, off_t ofs, struct file* target_file) {
+    bool result = true;
 
-    if (offset % PGSIZE != 0)
-        return NULL;
+    /* Duplicated page. */
+    if (spt_find_page(&thread_current()->spt, addr))
+        result = false;
+
+    /* Wrong offset. */
+    if (ofs % PGSIZE != 0)
+        result = false;
+
+    /* Wrong address. */
+    if (addr == NULL || is_kernel_vaddr(addr) || pg_round_down(addr) != addr)
+        result = false;
+
+    /* Wrong length. */
+    if ((long long) length <= 0)
+        result = false;
+
+    if (target_file == NULL)
+        result = false;
+
+    return result;
+}
 
 
-    if (pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0)
-        return NULL;
+void* mmap (void* addr, size_t length, int writable, int fd, off_t ofs) {
+    struct file* target_file;
 
-    if (fd == 0 || fd == 1)
+    /* Invalid file descriptor. */
+    if (fd < 2)
         exit(-1);
 
-    // vm_overlap
-    if (spt_find_page(&thread_current()->spt, addr))
+    target_file = get_struct_with_fd(fd)->file;
+    if (!is_valid_mmap(addr, length, ofs, target_file))
         return NULL;
 
-    struct file* target = get_struct_with_fd(fd)->file;
-
-    if (target == NULL)
-        return NULL;
-
-    void * ret = do_mmap(addr, length, writable, target, offset);
-
-    return ret;
+    return do_mmap(addr, length, writable, target_file, ofs);
 }
 
 void munmap (void *addr) {

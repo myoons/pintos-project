@@ -32,13 +32,47 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the file. */
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
-	struct file_page *file_page UNUSED = &page->file;
+    struct file_page *file_page UNUSED = &page->file;
+
+    if (page == NULL)
+        return false;
+
+    struct file_aux* faux = (struct file_aux*) page->uninit.aux;
+
+    struct file *file = faux->file;
+    off_t offset = faux->ofs;
+    size_t page_read_bytes = faux->read_bytes;
+    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+    file_seek (file, offset);
+
+    if (file_read (file, kva, page_read_bytes) != (int) page_read_bytes) {
+        // palloc_free_page (kva);
+        return false;
+    }
+
+    memset (kva + page_read_bytes, 0, page_zero_bytes);
+
+    return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
-	struct file_page *file_page UNUSED = &page->file;
+    struct file_page *file_page UNUSED = &page->file;
+
+    if (page == NULL)
+        return false;
+
+    struct file_aux* faux = (struct file_aux*) page->uninit.aux;
+
+    // 사용 되었던 페이지(dirty page)인지 체크
+    if(pml4_is_dirty(thread_current()->pml4, page->va)){
+        file_write_at(faux->file, page->va, faux->read_bytes, faux->ofs);
+        pml4_set_dirty (thread_current()->pml4, page->va, 0);
+    }
+
+    pml4_clear_page(thread_current()->pml4, page->va);
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -51,52 +85,59 @@ file_backed_destroy (struct page *page) {
 void *
 do_mmap (void *addr, size_t length, int writable,
 		struct file *file, off_t offset) {
+    void* copy_addr;
+    struct file_aux* faux;
+    struct file* target_file;
+    size_t should_read_bytes;
+    size_t should_zero_bytes;
 
-    struct file *mfile = file_reopen(file);
+    copy_addr = addr;
+    target_file = file_reopen(file);
+    should_read_bytes = file_length(file) < length ? file_length(file) : length;
+    should_zero_bytes = PGSIZE - should_read_bytes % PGSIZE;
 
-    void * ori_addr = addr;
-    size_t read_bytes = length > file_length(file) ? file_length(file) : length;
-    size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
-
-    while (read_bytes > 0 || zero_bytes > 0) {
-        size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+    /* Like load_segment. */
+    while (should_read_bytes > 0 || should_zero_bytes > 0) {
+        size_t page_read_bytes = should_read_bytes < PGSIZE ? should_read_bytes : PGSIZE;
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-        struct file_aux* faux = (struct file_aux*) malloc(sizeof(struct file_aux));
+        faux = (struct file_aux*) malloc(sizeof(struct file_aux));
         faux->ofs = offset;
-        faux->file = mfile;
+        faux->file = target_file;
         faux->read_bytes = page_read_bytes;
 
         if (!vm_alloc_page_with_initializer (VM_FILE, addr, writable, lazy_load_segment, faux))
             return NULL;
 
-        read_bytes -= page_read_bytes;
-        zero_bytes -= page_zero_bytes;
-        addr       += PGSIZE;
-        offset     += page_read_bytes;
+        should_read_bytes -= page_read_bytes;
+        should_zero_bytes -= page_zero_bytes;
+        addr += PGSIZE;
+        offset += page_read_bytes;
     }
 
-    return ori_addr;
+    return copy_addr;
 }
 
 /* Do the munmap */
 void
 do_munmap (void *addr) {
-    while (true) {
-        struct page* page = spt_find_page(&thread_current()->spt, addr);
+    struct file_aux* faux;
+    struct page* target_page;
+    struct thread* curr = thread_current();
 
-        if (page == NULL)
+    while (1) {
+        target_page = spt_find_page(&curr->spt, addr);
+        if (target_page == NULL)
             break;
 
-        struct file_aux* faux = (struct file_aux*) page->uninit.aux;
+        faux = (struct file_aux*) target_page->uninit.aux;
 
-        // dirty(사용되었던) bit 체크
-        if(pml4_is_dirty(thread_current()->pml4, page->va)) {
+        if (pml4_is_dirty(curr->pml4, target_page->va)) {
             file_write_at(faux->file, addr, faux->read_bytes, faux->ofs);
-            pml4_set_dirty (thread_current()->pml4, page->va, 0);
+            pml4_set_dirty(curr->pml4, target_page->va, 0);
         }
 
-        pml4_clear_page(thread_current()->pml4, page->va);
+        pml4_clear_page(curr->pml4, target_page->va);
         addr += PGSIZE;
     }
 }
