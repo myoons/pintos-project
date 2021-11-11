@@ -9,8 +9,9 @@ userprog/syscall.o: ../../userprog/syscall.c \
  ../../include/threads/palloc.h ../../include/vm/uninit.h \
  ../../include/vm/anon.h ../../include/vm/file.h \
  ../../include/filesys/file.h ../../include/filesys/off_t.h \
- ../../include/threads/loader.h ../../include/userprog/gdt.h \
- ../../include/filesys/filesys.h ../../include/userprog/process.h \
- ../../include/threads/flags.h ../../include/threads/malloc.h \
- ../../include/intrinsic.h ../../include/threads/mmu.h \
- ../../include/threads/pte.h ../../include/threads/vaddr.h
+ ../../include/lib/kernel/hash.h ../../include/lib/kernel/list.h \
+ ../../include/threads/vaddr.h ../../include/threads/loader.h \
+ ../../include/userprog/gdt.h ../../include/filesys/filesys.h \
+ ../../include/userprog/process.h ../../include/threads/flags.h \
+ ../../include/threads/malloc.h ../../include/intrinsic.h \
+ ../../include/threads/mmu.h ../../include/threads/pte.h
