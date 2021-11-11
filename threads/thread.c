@@ -331,10 +331,6 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-#ifdef USERPROG
-    list_push_front(&(thread_current()->list_child_processes), &t->elem_for_child);
-#endif
-
     intr_set_level (old_level);
 
      if (thread_mlfqs && t != idle_thread) {
@@ -653,7 +649,8 @@ init_thread (struct thread *t, const char *name, int priority) {
     t->curr_exec_file = NULL;
 
     /* Add to thread pool */
-    list_push_front (&thread_pool, &t->elem_for_pool);
+    list_push_front(&thread_pool, &t->elem_for_pool);
+    list_push_front(&(running_thread()->list_child_processes), &t->elem_for_child);
 
 }
 

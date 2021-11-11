@@ -27,6 +27,9 @@ enum vm_type {
 #include "vm/uninit.h"
 #include "vm/anon.h"
 #include "vm/file.h"
+#include "lib/kernel/hash.h"
+#include "threads/vaddr.h"
+
 #ifdef EFILESYS
 #include "filesys/page_cache.h"
 #endif
@@ -46,6 +49,8 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
+    struct hash_elem elem_for_hash_table;
+    bool writable;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -61,8 +66,10 @@ struct page {
 
 /* The representation of "frame" */
 struct frame {
-	void *kva;
-	struct page *page;
+	void* kva;
+	struct page* page;
+
+    struct list_elem elem_for_frame_list;
 };
 
 /* The function table for page operations.
@@ -85,7 +92,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
-    struc hash* hash_table;
+    struct hash* hash_table;
 };
 
 #include "threads/thread.h"

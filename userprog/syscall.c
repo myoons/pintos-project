@@ -12,12 +12,14 @@
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "intrinsic.h"
+#include "vm/vm.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 bool less_fd(const struct list_elem *a, const struct list_elem *b, void *aux);
 
-void is_valid_address (uint64_t* addr);
+struct page* is_valid_address (uint64_t* addr);
+void is_valid_buffer(void* buffer, unsigned length, bool writable);
 struct struct_fd* get_struct_with_fd (int fd);
 int put_fd_with_file (struct file* target_file);
 
@@ -54,13 +56,31 @@ syscall_init (void) {
     lock_init(&lock_for_filesys);
 }
 
-void
+struct page*
 is_valid_address (uint64_t* uaddr) {
-    if (!is_user_vaddr(uaddr) || uaddr == NULL || pml4_get_page(thread_current()->pml4, uaddr) == NULL){
+    struct page* page;
+
+    if (is_kernel_vaddr(uaddr))
         exit(-1);
-    }
+
+    page = spt_find_page(&thread_current()->spt, uaddr);
+    if (page == NULL)
+        exit(-1);
+
+    return page;
 }
 
+void
+is_valid_buffer(void* buffer, unsigned length, bool write) {
+    struct page* page;
+
+    for (int i=0; i<length; i++) {
+        page = is_valid_address(buffer+i);
+
+        if (write == true && page->writable == false)
+            exit(-1);
+    }
+}
 
 /* Halt the operating system. */
 void halt (void) {
@@ -414,9 +434,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
             f->R.rax = filesize(f->R.rdi);
             break;
         case SYS_READ:
+            is_valid_buffer(f->R.rsi, f->R.rdx, 1);
             f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
         case SYS_WRITE:
+            is_valid_buffer(f->R.rsi, f->R.rdx, 0);
             f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
         case SYS_SEEK:

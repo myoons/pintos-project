@@ -68,11 +68,9 @@ process_create_initd (const char *file_name) {
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (user_program, PRI_DEFAULT, initd, fn_copy);
 
-    /* Push thread to child list. */
-
-
     if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
+
 	return tid;
 }
 
@@ -139,7 +137,6 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	void* newpage;
 	bool writable;
 
-	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
     if (is_kernel_vaddr(va))
         return true;
 
@@ -148,22 +145,16 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
     if (parent_page == NULL)
         return false;
 
-	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
-	 *    TODO: NEWPAGE. */
     newpage = palloc_get_page(PAL_USER);
     if (newpage == NULL)
         return false;
 
-    /* 4. TODO: Duplicate parent's page to the new page and
-     *    TODO: check whether parent's page is writable or not (set WRITABLE
-     *    TODO: according to the result). */
     memcpy(newpage, parent_page, PGSIZE);
     writable = is_writable(pte);
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
-		/* 6. TODO: if fail to insert page, do error handling. */
         palloc_free_page(newpage);
         return false;
 	}
@@ -204,12 +195,6 @@ __do_fork (void *aux) {
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
-
-	/* TODO: Your code goes here.
-	 * TODO: Hint) To duplicate the file object, use `file_duplicate`
-	 * TODO:       in include/filesys/file.h. Note that parent should not return
-	 * TODO:       from the fork() until this function successfully duplicates
-	 * TODO:       the resources of parent.*/
 
     if (parent->fds == FD_LIMIT)
         goto error;
@@ -318,8 +303,7 @@ process_wait (tid_t child_tid) {
     if (!is_my_child)
         return -1;
 
-    sema_down(&(child_thread_to_wait->sema_for_wait));
-
+    sema_down(&(child_thread_to_wait->sema_for_wait));  // Error 발생
     list_remove(&(child_thread_to_wait->elem_for_child));
     sema_up(&(child_thread_to_wait->sema_for_free));
 
@@ -818,9 +802,33 @@ install_page (void *upage, void *kpage, bool writable) {
 
 static bool
 lazy_load_segment (struct page *page, void *aux) {
-	/* TODO: Load the segment from the file */
-	/* TODO: This called when the first page fault occurs on address VA. */
-	/* TODO: VA is available when calling this function. */
+    off_t ofs;
+    struct file* file;
+    struct file_aux* faux;
+    size_t should_read_bytes;
+    size_t should_zero_bytes;
+    size_t actual_read_bytes;
+
+    faux = (struct file_aux*) aux;
+
+    ofs = faux->ofs;
+    file = faux->file;
+    should_read_bytes = faux->read_bytes;
+    should_zero_bytes = PGSIZE - should_read_bytes;
+
+    /* Change current position in FILE. */
+    file_seek(file, ofs);
+
+    /* Returns the number of bytes actually read. */
+    actual_read_bytes = file_read(file, page->frame->kva, should_read_bytes);
+
+    if (actual_read_bytes != should_read_bytes) {
+        palloc_free_page(page->frame->kva);
+        return false;
+    }
+
+    memset(page->frame->kva + should_zero_bytes, 0, should_zero_bytes);
+    return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -851,10 +859,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
-		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+		struct file_aux* faux = (struct file_aux*) malloc(sizeof(struct file_aux));
+		faux->ofs = ofs;
+		faux->file = file;
+		faux->read_bytes = page_read_bytes;
+
+		if (!vm_alloc_page_with_initializer (VM_ANON, upage, writable, lazy_load_segment, faux))
 			return false;
 
 		/* Advance. */
@@ -869,12 +879,17 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
+    struct thread* curr = thread_current();
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
 
-	/* TODO: Map the stack on stack_bottom and claim the page immediately.
-	 * TODO: If success, set the rsp accordingly.
-	 * TODO: You should mark the page is stack. */
-	/* TODO: Your code goes here */
+    /* Allocate page. (Type, Upage, writable) */
+    if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1))
+        success = vm_claim_page(stack_bottom);
+
+    if (success) {
+        curr->stack_bottom = stack_bottom;
+        if_->rsp = USER_STACK;
+    }
 
 	return success;
 }
