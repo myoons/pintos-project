@@ -303,7 +303,7 @@ process_wait (tid_t child_tid) {
     if (!is_my_child)
         return -1;
 
-    sema_down(&(child_thread_to_wait->sema_for_wait));  // Error 발생
+    sema_down(&(child_thread_to_wait->sema_for_wait));
     list_remove(&(child_thread_to_wait->elem_for_child));
     sema_up(&(child_thread_to_wait->sema_for_free));
 
@@ -357,11 +357,9 @@ process_cleanup (void) {
 	struct thread *curr = thread_current ();
 
 #ifdef VM
-    supplemental_page_table_kill (&curr->spt);
-
     /* Returns true if H contains no elements, false otherwise. */
-//    if (!hash_empty((&curr->spt)->hash_table))
-//	    supplemental_page_table_kill (&curr->spt);
+    if(!hash_empty(&curr->spt.hash_table))
+        supplemental_page_table_kill (&curr->spt);
 #endif
 
 	uint64_t *pml4;

@@ -18,7 +18,7 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 bool less_fd(const struct list_elem *a, const struct list_elem *b, void *aux);
 
-void is_valid_address (uint64_t* addr);
+void is_valid_address (uint64_t* uaddr);
 struct page* get_page_from_address (uint64_t* addr);
 void is_valid_buffer(void* buffer, unsigned length, bool writable);
 struct struct_fd* get_struct_with_fd (int fd);
