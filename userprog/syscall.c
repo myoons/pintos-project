@@ -394,6 +394,36 @@ void close (int fd) {
         lock_release(&lock_for_filesys);
 }
 
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+
+    if (offset % PGSIZE != 0)
+        return NULL;
+
+
+    if (pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0)
+        return NULL;
+
+    if (fd == 0 || fd == 1)
+        exit(-1);
+
+    // vm_overlap
+    if (spt_find_page(&thread_current()->spt, addr))
+        return NULL;
+
+    struct file* target = get_struct_with_fd(fd)->file;
+
+    if (target == NULL)
+        return NULL;
+
+    void * ret = do_mmap(addr, length, writable, target, offset);
+
+    return ret;
+}
+
+void munmap (void *addr) {
+    do_munmap(addr);
+}
+
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
@@ -445,6 +475,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
             break;
         case SYS_CLOSE:
             close(f->R.rdi);
+            break;
+        case SYS_MMAP:
+            f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+            break;
+        case SYS_MUNMAP:
+            munmap(f->R.rdi);
             break;
         default:
             PANIC("WRONG SYSTEM CALL NUMBER?");

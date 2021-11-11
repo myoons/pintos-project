@@ -95,9 +95,8 @@ spt_find_page (struct supplemental_page_table* spt, void* va) {
     /* Find the target hash element of target va. */
     target_hash_elem = hash_find(spt->hash_table, &(dummy_page->elem_for_hash_table));
 
-    if (target_hash_elem == NULL) {
+    if (target_hash_elem == NULL)
         return NULL;
-    }
 
     /* Get target page using target hash element. */
     target_page = hash_entry(target_hash_elem, struct page, elem_for_hash_table);
@@ -194,9 +193,8 @@ vm_get_frame (void) {
 
 /* Growing the stack. */
 static void
-vm_stack_growth (void *addr) {
-    if (vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1))
-    {
+vm_stack_growth (void* addr) {
+    if (vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1)) {
         vm_claim_page(addr);
         thread_current()->stack_bottom -= PGSIZE;
     }
@@ -211,8 +209,8 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame* f, void *addr,
 		bool user UNUSED, bool write UNUSED, bool not_present) {
+    bool result;
     void* thread_rsp;
-
     /* Virtual address should be in user pool. */
     if (is_kernel_vaddr(addr) && user)
         return false;
@@ -222,10 +220,19 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
     else
         thread_rsp = f->rsp;
 
-    if (thread_rsp - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK)
-        vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+    if (!not_present)
+        return not_present;
 
-    return vm_claim_page(addr);
+    result = vm_claim_page(addr);
+
+    if (!result) {
+        if ((addr<=USER_STACK) && (thread_rsp<=addr+8) && (USER_STACK - (1 << 40) <= addr)) {
+            vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+            return true;
+        }
+    }
+
+    return result;
 }
 
 /* Free the page.
