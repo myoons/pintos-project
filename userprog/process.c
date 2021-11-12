@@ -178,7 +178,7 @@ __do_fork (void *aux) {
     struct intr_frame* parent_if;
     parent_if = parent->user_if;
 
-	/* 1. Read the cpu context to local stack. */
+    /* 1. Read the cpu context to local stack. */
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
 
 	/* 2. Duplicate PT */
@@ -252,9 +252,6 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
-	/* We first kill the current context */
-	process_cleanup ();
-
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
@@ -317,6 +314,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+    process_cleanup();
 
     struct list_elem* current_list_elem;
     struct struct_fd* target_struct_fd;
@@ -343,8 +341,6 @@ process_exit (void) {
 
     if (thread_current()->curr_exec_file != NULL)
         file_allow_write(thread_current()->curr_exec_file);
-
-    process_cleanup();
 
     thread_current()->tf.R.rax=thread_current()->exit_status;
     sema_up(&(thread_current()->sema_for_wait));
@@ -730,7 +726,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
-
+    printf
 	file_seek (file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.

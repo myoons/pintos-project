@@ -6,8 +6,8 @@
 #include "userprog/process.h"
 
 
-static uint64_t get_value_from_hash_table (const struct hash_elem* target_elem, void* aux UNUSED);
-static bool compare_hash_value (const struct hash_elem* first_elem, const struct hash_elem* second_elem, void* aux UNUSED);
+static uint64_t get_value_from_hash_table (struct hash_elem* target_elem, void* aux UNUSED);
+static bool compare_hash_value (struct hash_elem* first_elem, struct hash_elem* second_elem, void* aux UNUSED);
 
 struct list frame_list;
 
@@ -62,6 +62,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void* upage, bool writable,
 
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page(spt, upage) == NULL) {
+
         new_page = (struct page*) malloc(sizeof(struct page));
 
         switch (VM_TYPE(type)) {
@@ -71,14 +72,17 @@ vm_alloc_page_with_initializer (enum vm_type type, void* upage, bool writable,
             case VM_FILE:
                 uninit_new(new_page, upage, init, type, aux, file_backed_initializer);
                 break;
+            default:
+                PANIC("WRONG INITIALIZER TYPE");
+                break;
         }
 
         new_page->writable = writable;
-        spt_insert_page(spt, new_page);
-        return true;
+        return spt_insert_page(spt, new_page);
 	}
+    return true;
 err:
-	return false;
+    return false;
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
@@ -328,41 +332,41 @@ supplemental_page_table_copy (struct supplemental_page_table *dst, struct supple
             struct page* dest_page = spt_find_page(dst, source_page_va);
             memcpy(dest_page->frame->kva, source_page->frame->kva, PGSIZE);
         }
-
     }
+    return true;
 }
 
 static void
 hash_destroy_func(struct hash_elem* target_elem, void* aux UNUSED) {
-    const struct page* target_page = hash_entry(target_elem, struct page, elem_for_hash_table);
+    struct page* target_page = hash_entry(target_elem, struct page, elem_for_hash_table);
     free(target_page);
 }
 
 /* Free the resource hold by the supplemental page table */
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
-//    struct hash_iterator iter_hash;
-//
-//    /* Initializes I for iterating hash table H. */
-//    hash_first(&iter_hash, spt->hash_table);
-//    while (hash_next(&iter_hash)) {
-//        struct page* target_page = hash_entry(hash_cur(&iter_hash), struct page, elem_for_hash_table);
-//        if (target_page->operations->type == VM_FILE)
-//            do_munmap(target_page->va);
-//    }
-//
-//    hash_destroy(spt->hash_table, hash_destroy_func);
+    struct hash_iterator iter_hash;
+
+    /* Initializes I for iterating hash table H. */
+    hash_first(&iter_hash, spt->hash_table);
+    while (hash_next(&iter_hash)) {
+        struct page* target_page = hash_entry(hash_cur(&iter_hash), struct page, elem_for_hash_table);
+        if (target_page->operations->type == VM_FILE)
+            do_munmap(target_page->va);
+    }
+
+    hash_destroy(spt->hash_table, hash_destroy_func);
 }
 
 static uint64_t
-get_value_from_hash_table (const struct hash_elem* target_elem, void* aux UNUSED)
+get_value_from_hash_table (struct hash_elem* target_elem, void* aux UNUSED)
 {
     struct page* target_page = hash_entry(target_elem, struct page, elem_for_hash_table);
     return hash_bytes(&(target_page->va), sizeof target_page->va);
 }
 
 static bool
-compare_hash_value (const struct hash_elem* first_elem, const struct hash_elem* second_elem, void *aux UNUSED) {
+compare_hash_value (struct hash_elem* first_elem, struct hash_elem* second_elem, void *aux UNUSED) {
     const struct page* first_page = hash_entry(first_elem, struct page, elem_for_hash_table);
     const struct page* second_page = hash_entry(second_elem, struct page, elem_for_hash_table);
     return first_page->va < second_page->va;

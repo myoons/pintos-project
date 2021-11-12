@@ -2,9 +2,10 @@
 
 #include "vm/vm.h"
 #include "devices/disk.h"
+#include "lib/kernel/bitmap.h"
 
 /* DO NOT MODIFY BELOW LINE */
-static struct disk *swap_disk;
+static struct disk* swap_disk;
 static bool anon_swap_in (struct page *page, void *kva);
 static bool anon_swap_out (struct page *page);
 static void anon_destroy (struct page *page);
@@ -17,11 +18,19 @@ static const struct page_operations anon_ops = {
 	.type = VM_ANON,
 };
 
+struct bitmap* swap_bitmap;
+const size_t SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE;
+
 /* Initialize the data for anonymous pages */
 void
 vm_anon_init (void) {
-	/* TODO: Set up the swap_disk. */
-	swap_disk = NULL;
+    size_t swap_n_bits;
+
+    /* 1:1 - swap */
+	swap_disk = disk_get(1, 1);
+
+    swap_n_bits = disk_size(swap_disk) / (PGSIZE / DISK_SECTOR_SIZE);
+    swap_bitmap = bitmap_create(swap_n_bits);
 }
 
 /* Initialize the file mapping */
@@ -36,13 +45,40 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-	struct anon_page *anon_page = &page->anon;
+    int bit;
+    bool result;
+	struct anon_page* anon_page = &page->anon;
+
+    bit = anon_page->swap_bit;
+    result = bitmap_test(swap_bitmap, bit);
+    if (result) {
+        for (int i = 0; i < SECTORS_PER_PAGE; i++)
+            disk_read(swap_disk, bit * SECTORS_PER_PAGE + i, kva + DISK_SECTOR_SIZE * i);
+    }
+
+    bitmap_set(swap_bitmap, bit, false);
+    return result;
 }
 
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
-	struct anon_page *anon_page = &page->anon;
+    int bit;
+    bool result;
+	struct anon_page* anon_page = &page->anon;
+
+    bit = bitmap_scan(swap_bitmap, 0, 1, false);
+    if (bit == BITMAP_ERROR)
+        result = false;
+
+    for (int i = 0; i < SECTORS_PER_PAGE; i++)
+        disk_write(swap_disk, bit * SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE * i);
+
+    bitmap_set(swap_bitmap, bit, true);
+    pml4_clear_page(thread_current()->pml4, page->va);
+
+    anon_page->swap_bit = bit;
+    return true;
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
