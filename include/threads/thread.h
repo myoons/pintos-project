@@ -113,7 +113,6 @@ struct thread {
     struct semaphore sema_for_wait;  /* Semaphore to make parent thread block. */
 
     struct list list_struct_fds;        /* List of structure fds of the corresponding thread. */
-    int fds;                        /* Number of file descriptor to be assigned next. */
 
     struct semaphore sema_for_fork;     /* Semaphore to block thread while forking. */
     struct file* curr_exec_file;        /* File the corresponding thread is currently executing. */

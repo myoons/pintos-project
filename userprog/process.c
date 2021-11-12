@@ -22,16 +22,10 @@
 #include "vm/vm.h"
 #endif
 
-#define FD_LIMIT 3 * (1<<9)
-
 static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
-
-/* No internal synchronization. Concurrent accesses will interfere with one another.
- * You should use synchronization to ensure that only one process at a time is executing file system code. */
-struct lock lock_for_filesys;
 
 /* General process initializer for initd and other process. */
 static void
@@ -53,6 +47,7 @@ process_create_initd (const char *file_name) {
 	fn_copy = palloc_get_page (0);
 	if (fn_copy == NULL)
 		return TID_ERROR;
+
 	strlcpy (fn_copy, file_name, PGSIZE);
 
     /* Copy file name for parsing; It should not affect other jobs using file_name */
@@ -65,7 +60,7 @@ process_create_initd (const char *file_name) {
         pos ++;
     user_program[pos] = '\0';
 
-	/* Create a new thread to execute FILE_NAME. */
+    /* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (user_program, PRI_DEFAULT, initd, fn_copy);
 
     if (tid == TID_ERROR)
@@ -103,6 +98,9 @@ process_fork (const char *name, struct intr_frame* if_) {
 
     /* Create child thread. */
     child_tid = thread_create(name, PRI_DEFAULT, __do_fork, thread_current());
+
+    if (child_tid == TID_ERROR)
+        return TID_ERROR;
 
     if (!list_empty(&(curr->list_child_processes))) {
         current_list_elem = list_begin(&(curr->list_child_processes));
@@ -196,9 +194,6 @@ __do_fork (void *aux) {
 		goto error;
 #endif
 
-    if (parent->fds == FD_LIMIT)
-        goto error;
-
     struct list_elem* current_list_elem;
     struct struct_fd* struct_fd_for_child;
     struct struct_fd* target_struct_fd;
@@ -220,16 +215,11 @@ __do_fork (void *aux) {
         }
     }
 
-    current->fds = parent->fds;
     sema_up(&(current->sema_for_fork));
 
 	/* Finally, switch to the newly created process. */
-    if (succ) {
-        current->exit_status = if_.R.rax;
-        if_.R.rax = 0;
-        current->tf = if_;
+    if (succ)
         do_iret(&if_);
-    }
 
 error:
     current->exit_status = TID_ERROR;
@@ -241,7 +231,7 @@ error:
  * Returns -1 on fail. */
 int
 process_exec (void *f_name) {
-	char *file_name = f_name;
+    char *file_name = f_name;
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
@@ -252,16 +242,24 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
+    /* We first kill the current context */
+    process_cleanup ();
+
+#ifdef VM
+    /* Should initialize supplemental page table. */
+    supplemental_page_table_init(&thread_current()->spt);
+#endif
+
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
-	/* If load failed, quit. */
-	palloc_free_page (file_name);
-	if (!success)
-		return -1;
+    /* If load failed, quit. */
+    palloc_free_page (file_name);
+    if (!success) {
+        return -1;
+    }
 
     /* Start switched process. */
-    file_deny_write(thread_current()->curr_exec_file);
 	do_iret (&_if);
 	NOT_REACHED ();
 }
@@ -314,8 +312,6 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-    process_cleanup();
-
     struct list_elem* current_list_elem;
     struct struct_fd* target_struct_fd;
 
@@ -323,14 +319,15 @@ process_exit (void) {
         current_list_elem = list_pop_front(&thread_current()->list_struct_fds);
         target_struct_fd = list_entry(current_list_elem, struct struct_fd, elem);
 
-        if (target_struct_fd->file != NULL)
-            file_close(target_struct_fd->file);
-
         free(target_struct_fd);
     }
 
-    if (thread_current()->curr_exec_file != NULL)
-        file_allow_write(thread_current()->curr_exec_file);
+    if (thread_current()->curr_exec_file != NULL) {
+        file_close(thread_current()->curr_exec_file);
+        thread_current()->curr_exec_file = NULL;
+    }
+
+    process_cleanup();
 
     if (!list_empty(&(thread_current()->list_child_processes))) {
         current_list_elem = list_begin(&(thread_current()->list_child_processes));
@@ -338,9 +335,6 @@ process_exit (void) {
         while (current_list_elem != list_end(&(thread_current()->list_child_processes)))
             current_list_elem = list_remove(current_list_elem);
     }
-
-    if (thread_current()->curr_exec_file != NULL)
-        file_allow_write(thread_current()->curr_exec_file);
 
     thread_current()->tf.R.rax=thread_current()->exit_status;
     sema_up(&(thread_current()->sema_for_wait));
@@ -547,7 +541,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Set up stack. */
-	if (!setup_stack (if_))
+	if (!setup_stack (if_))  // exec-once ERROR POINT
 		goto done;
 
 	/* Start address. */

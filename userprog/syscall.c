@@ -58,40 +58,36 @@ syscall_init (void) {
     lock_init(&lock_for_filesys);
 }
 
-void is_valid_address(uint64_t* uaddr)
-{
-    if (uaddr == NULL || !(is_user_vaddr(uaddr)) || pml4_get_page(thread_current()->pml4, uaddr) == NULL)
+void is_valid_address(uint64_t* uaddr) {
+    if (is_kernel_vaddr(uaddr))
         exit(-1);
 }
 
 struct page*
 get_page_from_address (uint64_t* uaddr) {
-    struct page* page;
+    struct page* target_page;
 
-    if (is_kernel_vaddr(uaddr))
+    target_page = spt_find_page(&thread_current()->spt, uaddr);
+    if (target_page == NULL)
         exit(-1);
 
-    page = spt_find_page(&thread_current()->spt, uaddr);
-    return page;
+    return target_page;
 }
 
 void
 is_valid_buffer(void* buffer, unsigned length, bool write) {
-    struct page* page;
+    struct page* target_page;
 
     for (int i=0; i<length; i++) {
-        page = get_page_from_address(buffer+i);
+        target_page = get_page_from_address(buffer+i);
 
-        if (write == true && page->writable == false)
+        if (write == true && target_page->writable == false)
             exit(-1);
     }
 }
 
 /* Halt the operating system. */
 void halt (void) {
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
     power_off();
 
     /* Make sure the thread is exited. */
@@ -100,9 +96,6 @@ void halt (void) {
 
 /* Terminate this process. */
 void exit(int status) {
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
     thread_current()->exit_status = status;
     printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
     thread_exit();
@@ -114,9 +107,6 @@ void exit(int status) {
 /* Switch current process. */
 int exec (const char* file) {
     is_valid_address((uint64_t*) file);
-
-    if (!lock_held_by_current_thread (&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
 
     /* Copy file name for parsing; It should not affect other jobs using file_name */
     int n;
@@ -131,12 +121,8 @@ int exec (const char* file) {
     int result;
     result = process_exec(fn_copy);
 
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
-    if (result == -1) {
+    if (result == -1)
         return -1;
-    }
 
     /* Make sure the thread is exited. */
     NOT_REACHED();
@@ -145,9 +131,6 @@ int exec (const char* file) {
 
 /* Wait for a child process to die. */
 int wait (pid_t pid) {
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
     return process_wait(pid);
 }
 
@@ -156,9 +139,10 @@ bool create (const char* file, unsigned initial_size) {
     is_valid_address((uint64_t*) file);
     bool result;
 
-    lock_acquire(&lock_for_filesys);
+    if (file == NULL)
+        exit(-1);
+
     result = filesys_create(file, initial_size);
-    lock_release(&lock_for_filesys);
 
     return result;
 }
@@ -168,14 +152,7 @@ bool remove (const char* file) {
     is_valid_address((uint64_t*) file);
     bool result;
 
-
-    if (!lock_held_by_current_thread(&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
-
     result = filesys_remove(file);
-
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
 
     return result;
 }
@@ -220,7 +197,6 @@ int put_fd_with_file (struct file* target_file) {
     }
 
     list_insert_ordered(&curr->list_struct_fds, &target_struct_fd->elem, less_fd, NULL);
-    curr->fds = stored_fd;
     return stored_fd;
 }
 
@@ -238,8 +214,8 @@ int open (const char* file) {
     struct file* opened_file;
     int result;
 
-    if (!lock_held_by_current_thread(&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
+    if (file == NULL)
+        return -1;
 
     opened_file = filesys_open(file);
 
@@ -247,63 +223,64 @@ int open (const char* file) {
         thread_current()->exit_status = -1;
         result = -1;
     }
-
     else
         result = put_fd_with_file(opened_file);
 
-    if (lock_held_by_current_thread (&lock_for_filesys))
-        lock_release(&lock_for_filesys);
+    if (result == -1 && opened_file != NULL)
+        file_close(opened_file);
 
     return result;
 }
 
 /* Obtain a file's size. */
 int filesize (int fd) {
-    struct struct_fd* target_struct_fd;
     int result;
-
-    if (!lock_held_by_current_thread(&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
+    struct file* target_file;
+    struct struct_fd* target_struct_fd;
 
     target_struct_fd = get_struct_with_fd(fd);
 
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
-
     if (target_struct_fd == NULL)
         result = -1;
-    else
-        result = (int) file_length(target_struct_fd->file);
+    else {
+        target_file = target_struct_fd->file;
 
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
+        if (target_file == NULL)
+            result = -1;
+        else
+            result = (int) file_length(target_file);
+    }
 
     return result;
 }
 
 /* Read from a file. */
 int read (int fd, void* buffer, unsigned length) {
-    is_valid_address((uint64_t*) buffer);
-    struct struct_fd* target_struct_fd;
     int result;
+    struct file* target_file;
+    struct struct_fd* target_struct_fd;
 
-    if (fd == 0)
+    if (fd == 0) {
         input_getc(buffer, length);
+        result = length;
+    }
     else if (fd == 1)
         result = -1;
     else {
-        if (!lock_held_by_current_thread(&lock_for_filesys))
-            lock_acquire(&lock_for_filesys);
-
         target_struct_fd = get_struct_with_fd(fd);
+        target_file = target_struct_fd->file;
 
         if (target_struct_fd == NULL)
             result = -1;
-        else
-            result = (int) file_read(target_struct_fd->file, buffer, length);
+        else {
+            if (!lock_held_by_current_thread(&lock_for_filesys))
+                lock_acquire(&lock_for_filesys);
 
-        if (lock_held_by_current_thread(&lock_for_filesys))
-            lock_release(&lock_for_filesys);
+            result = (int) file_read(target_file, buffer, length);
+
+            if (lock_held_by_current_thread(&lock_for_filesys))
+                lock_release(&lock_for_filesys);
+        }
     }
 
     return result;
@@ -311,9 +288,9 @@ int read (int fd, void* buffer, unsigned length) {
 
 /* Write to a file. */
 int write (int fd, const void* buffer, unsigned length) {
-    is_valid_address((uint64_t*) buffer);
-    struct struct_fd* target_struct_fd;
     int result;
+    struct file* target_file;
+    struct struct_fd* target_struct_fd;
 
     if (fd == 0)
         result = -1;
@@ -322,18 +299,20 @@ int write (int fd, const void* buffer, unsigned length) {
         result = length;
     }
     else {
-        if (!lock_held_by_current_thread(&lock_for_filesys))
-            lock_acquire(&lock_for_filesys);
-
         target_struct_fd = get_struct_with_fd(fd);
+        target_file = target_struct_fd->file;
 
         if (target_struct_fd == NULL)
             result = -1;
-        else
+        else {
+            if (!lock_held_by_current_thread(&lock_for_filesys))
+                lock_acquire(&lock_for_filesys);
+
             result = (int) file_write(target_struct_fd->file, buffer, length);
 
-        if (lock_held_by_current_thread(&lock_for_filesys))
-            lock_release(&lock_for_filesys);
+            if (lock_held_by_current_thread(&lock_for_filesys))
+                lock_release(&lock_for_filesys);
+        }
     }
 
     return result;
@@ -341,37 +320,36 @@ int write (int fd, const void* buffer, unsigned length) {
 
 /* Change position in a file. */
 void seek (int fd, unsigned position) {
+    struct file* target_file;
     struct struct_fd* target_struct_fd;
-
-    if (!lock_held_by_current_thread(&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
 
     target_struct_fd = get_struct_with_fd(fd);
 
-    if (target_struct_fd != NULL)
-        file_seek(target_struct_fd->file, position);
+    if (target_struct_fd != NULL) {
+        target_file = target_struct_fd->file;
 
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
+        if (target_file != NULL)
+            file_seek(target_file, position);
+    }
 }
 
 /* Report current position in a file. */
 unsigned tell (int fd) {
+    unsigned result;
+    struct file* target_file;
     struct struct_fd* target_struct_fd;
-    int result;
 
-    if (!lock_held_by_current_thread(&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
+    if (fd <= 1)
+        return;
 
     target_struct_fd = get_struct_with_fd(fd);
 
-    if (target_struct_fd == NULL)
-        result = -1;
-    else
-        result = (unsigned) file_tell(target_struct_fd->file);
+    if (target_struct_fd != NULL) {
+        target_file = target_struct_fd->file;
 
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
+        if (target_file != NULL)
+            result = (unsigned) file_tell(target_struct_fd->file);
+    }
 
     return result;
 }
@@ -380,19 +358,21 @@ unsigned tell (int fd) {
 void close (int fd) {
     struct struct_fd* target_struct_fd;
 
-    if (!lock_held_by_current_thread(&lock_for_filesys))
-        lock_acquire(&lock_for_filesys);
+    if (fd <= 1)
+        return;
 
     target_struct_fd = get_struct_with_fd(fd);
 
-    if (target_struct_fd != NULL) {
+    if (target_struct_fd == NULL)
+        return;
+
+    if (target_struct_fd->file != NULL) {
         file_close(target_struct_fd->file);
-        list_remove(&(target_struct_fd->elem));
-        free(target_struct_fd);
+        target_struct_fd->file = NULL;
     }
 
-    if (lock_held_by_current_thread(&lock_for_filesys))
-        lock_release(&lock_for_filesys);
+    list_remove(&(target_struct_fd->elem));
+    free(target_struct_fd);
 }
 
 bool is_valid_mmap(void* addr, size_t length, off_t ofs, struct file* target_file) {

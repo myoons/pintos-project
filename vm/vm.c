@@ -5,7 +5,7 @@
 #include "vm/inspect.h"
 #include "userprog/process.h"
 
-
+/* Helper functions. */
 static uint64_t get_value_from_hash_table (struct hash_elem* target_elem, void* aux UNUSED);
 static bool compare_hash_value (struct hash_elem* first_elem, struct hash_elem* second_elem, void* aux UNUSED);
 
@@ -80,7 +80,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void* upage, bool writable,
         new_page->writable = writable;
         return spt_insert_page(spt, new_page);
 	}
-    return true;
+    return true;  // TODO(MYOONS)
 err:
     return false;
 }
@@ -101,6 +101,9 @@ spt_find_page (struct supplemental_page_table* spt, void* va) {
     /* Find the target hash element of target va. */
     target_hash_elem = hash_find(spt->hash_table, &(dummy_page->elem_for_hash_table));
 
+    /* Remove dummy page. */
+    free(dummy_page);
+
     if (target_hash_elem == NULL)
         return NULL;
 
@@ -120,9 +123,9 @@ spt_insert_page (struct supplemental_page_table *spt, struct page *page) {
     return_hash_elem = hash_insert (spt->hash_table, &(page->elem_for_hash_table));
 
     /* If return value is NULL, successfully inserted. */
-    if (return_hash_elem != NULL) {
+    if (return_hash_elem != NULL)
         succ = false;
-    }
+
 	return succ;
 }
 
@@ -176,24 +179,22 @@ vm_get_frame (void) {
 
     /* Allocate memory for new frame. */
     new_frame = (struct frame*) malloc(sizeof(struct frame));
-    ASSERT (new_frame != NULL);
 
     /* Get new page from user pool. */
     new_frame->kva = palloc_get_page(PAL_USER);
 
     /* If user pool is full, it returns null pointer. Should evict and fetch. */
     if (new_frame->kva == NULL)
-        /* Evict a frame from full user pool. */
         new_frame = vm_evict_frame();
-
-
-    /* Insert to frame list. */
-    list_push_back(&frame_list, &(new_frame->elem_for_frame_list));
+    else
+        list_push_back(&frame_list, &(new_frame->elem_for_frame_list));
 
     /* Make page NULL so that it could connect to new virtual page. */
     new_frame->page = NULL;
-	ASSERT (new_frame->page == NULL);
-	return new_frame;
+
+    ASSERT (new_frame != NULL);
+    ASSERT (new_frame->page == NULL);
+    return new_frame;
 }
 
 /* Growing the stack. */
@@ -216,8 +217,9 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
 		bool user UNUSED, bool write UNUSED, bool not_present) {
     bool result;
     void* thread_rsp;
+
     /* Virtual address should be in user pool. */
-    if (is_kernel_vaddr(addr) && user)
+    if (is_kernel_vaddr(addr))
         return false;
 
     if (is_kernel_vaddr(f->rsp))
@@ -231,9 +233,9 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
     result = vm_claim_page(addr);
 
     if (!result) {
-        if ((addr<=USER_STACK) && (thread_rsp<=addr+8) && (USER_STACK - (1 << 40) <= addr)) {
+        if ((addr <= USER_STACK) && (thread_rsp <= addr+8) && (USER_STACK - (1 << 40) <= addr)) {
             vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
-            return true;
+            result = true;
         }
     }
 
@@ -265,6 +267,7 @@ vm_claim_page (void *va) {
 static bool
 vm_do_claim_page (struct page* page) {
     bool result;
+    struct thread* curr = thread_current();
     /* Claim the page that allocate on VA. */
     struct frame* frame = vm_get_frame();
 
@@ -275,10 +278,10 @@ vm_do_claim_page (struct page* page) {
 	frame->page = page;
 	page->frame = frame;
 
-    result = pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable);
+    result = (pml4_get_page(curr->pml4, page->va) == NULL) && (pml4_set_page(curr->pml4, page->va, frame->kva, page->writable));
 
     if (result)
-        result = swap_in(page, frame->kva);
+        return swap_in(page, frame->kva);
 
     return result;
 }
@@ -290,7 +293,6 @@ supplemental_page_table_init (struct supplemental_page_table *spt) {
 
     /* Initialize hash table used in supplemental page table. */
     hash_init(hash_table, get_value_from_hash_table, compare_hash_value, NULL);
-
     spt->hash_table = hash_table;
 }
 
