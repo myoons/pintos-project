@@ -442,7 +442,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
-
+	
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -793,6 +793,21 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct page_info *load_info = (struct page_info*) aux;
+	if (page == NULL) return false;
+
+	if (load_info -> read_bytes > 0){
+		file_seek(load_info -> file, load_info->offset);
+		off_t read_offset = file_read (load_info->file, page->frame ->kva, load_info->read_bytes);
+		if (read_offset != (off_t)load_info->read_bytes) {
+			vm_dealloc_page(page);
+			return false;
+		}	
+	}
+	memset (page ->va + load_info ->read_bytes, 0, load_info->zero_bytes);
+	file_close (load_info -> file);
+	free (load_info);
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -816,6 +831,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
 
+	off_t load_ofs = ofs;
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -824,15 +840,23 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		struct page_info *aux = malloc(sizeof (struct page_info)); 
+		aux->read_bytes = page_read_bytes;
+		aux->zero_bytes = page_zero_bytes;
+		aux->offset = load_ofs;
+		aux->file = file;
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+					writable, lazy_load_segment, aux)) {
+			free(aux);
 			return false;
+		}
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		load_ofs += PGSIZE;
 	}
 	return true;
 }
@@ -847,6 +871,15 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	struct thread *current_thread = thread_current();
+
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    
+		success = vm_claim_page(stack_bottom);
+		
+		if (success) {
+			current_thread->stack_bottom = stack_bottom;
+		}
+    }
 
 	return success;
 }

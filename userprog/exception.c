@@ -134,7 +134,7 @@ page_fault (struct intr_frame *f) {
 	   be assured of reading CR2 before it changed). */
 	intr_enable ();
 
-
+	
 	/* Determine cause. */
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
@@ -149,8 +149,11 @@ page_fault (struct intr_frame *f) {
     /* Count page faults. */
     page_fault_cnt++;
 
+	thread_current()->exit_status = -1;
+	thread_exit();
+
     /* User. */
-    exit(-1);
+    // exit(-1);
 
     /* If the fault is true fault, show info and exit. */
 	printf ("Page fault at %p: %s error %s page in %s context.\n",
@@ -158,6 +161,8 @@ page_fault (struct intr_frame *f) {
 			not_present ? "not present" : "rights violation",
 			write ? "writing" : "reading",
 			user ? "user" : "kernel");
+	
+	
 	kill (f);
 }
 

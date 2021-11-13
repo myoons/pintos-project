@@ -16,7 +16,9 @@
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
-void is_valid_address (uint8_t * addr);
+struct page *is_valid_address (void * addr);
+void 
+is_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) ;
 struct struct_fd* get_struct_with_fd (int fd);
 int put_fd_with_file (struct file* target_file);
 
@@ -82,10 +84,26 @@ put_user (uint8_t *udst, uint8_t byte) {
     return error_code != -1;
 }
 
-void
-is_valid_address (uint8_t *uaddr) {
-    if ( get_user(uaddr) == -1 ){
+struct page * 
+is_valid_address (void *addr) {
+    // if ( get_user(uaddr) == -1 ){
+    //     exit(-1);
+    // }
+    if (is_kernel_vaddr(addr)) {
         exit(-1);
+    }
+    return spt_find_page(&thread_current()->spt, addr);
+}
+
+//수정
+void 
+is_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
+    for (int i = 0; i < size; i++) {
+        struct page* page = is_valid_address(buffer + i);    // 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
+        if(page == NULL)
+            exit(-1);
+        if(to_write == true && page->writable == false)
+            exit(-1);
     }
 }
 
@@ -395,9 +413,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
             f->R.rax = filesize(f->R.rdi);
             break;
         case SYS_READ:
+            is_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
             f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
         case SYS_WRITE:
+            is_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
             f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
         case SYS_SEEK:
