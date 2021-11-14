@@ -720,7 +720,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
-    printf
+	
 	file_seek (file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
@@ -809,7 +809,8 @@ lazy_load_segment (struct page *page, void *aux) {
 
     ofs = faux->ofs;
     file = faux->file;
-    should_read_bytes = faux->read_bytes < PGSIZE ? faux->read_bytes : PGSIZE;
+    // should_read_bytes = faux->read_bytes < PGSIZE ? faux->read_bytes : PGSIZE;
+	should_read_bytes = faux->read_bytes;
     should_zero_bytes = PGSIZE - should_read_bytes;
 
     /* Change current position in FILE. */
@@ -818,7 +819,7 @@ lazy_load_segment (struct page *page, void *aux) {
     /* Returns the number of bytes actually read. */
     actual_read_bytes = file_read(file, page->frame->kva, should_read_bytes);
 
-    if (actual_read_bytes != should_read_bytes) {
+    if (actual_read_bytes != (off_t) should_read_bytes) {
         palloc_free_page(page->frame->kva);
         return false;
     }

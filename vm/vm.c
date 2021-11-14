@@ -10,6 +10,7 @@ static uint64_t get_value_from_hash_table (struct hash_elem* target_elem, void* 
 static bool compare_hash_value (struct hash_elem* first_elem, struct hash_elem* second_elem, void* aux UNUSED);
 
 struct list frame_list;
+static struct lock frame_lock;
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -26,6 +27,7 @@ vm_init (void) {
 
     /* Initialize list of frames. */
     list_init(&frame_list);
+    lock_init (&frame_lock);
 }
 
 /* Get the type of RRthe page. This function is useful if you want to know the
@@ -80,7 +82,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void* upage, bool writable,
         new_page->writable = writable;
         return spt_insert_page(spt, new_page);
 	}
-    return true;  // TODO(MYOONS)
+    // return true;  // TODO(MYOONS)
 err:
     return false;
 }
@@ -163,7 +165,6 @@ vm_get_victim (void) {
 static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim = vm_get_victim ();
-
     /* Swap out the page. */
     swap_out(victim->page);
 	return victim;
@@ -228,16 +229,20 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
         thread_rsp = f->rsp;
 
     if (!not_present)
-        return not_present;
+        return false;
 
     result = vm_claim_page(addr);
 
-    if (!result) {
+    if (vm_claim_page(addr)) {
         if ((addr <= USER_STACK) && (thread_rsp <= addr+8) && (USER_STACK - (1 << 40) <= addr)) {
             vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
             result = true;
         }
+        // result = false;
     }
+    // else {
+    //     result = false;
+    // }
 
     return result;
 }
@@ -279,11 +284,11 @@ vm_do_claim_page (struct page* page) {
 	page->frame = frame;
 
     result = (pml4_get_page(curr->pml4, page->va) == NULL) && (pml4_set_page(curr->pml4, page->va, frame->kva, page->writable));
-
+    
     if (result)
         return swap_in(page, frame->kva);
 
-    return result;
+    return false;
 }
 
 /* Initialize new supplemental page table */

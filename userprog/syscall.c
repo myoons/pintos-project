@@ -68,6 +68,8 @@ get_page_from_address (uint64_t* uaddr) {
     struct page* target_page;
 
     target_page = spt_find_page(&thread_current()->spt, uaddr);
+    // if (is_kernel_vaddr(uaddr)) 
+    //     exit(-1);
     if (target_page == NULL)
         exit(-1);
 
@@ -81,6 +83,8 @@ is_valid_buffer(void* buffer, unsigned length, bool write) {
     for (int i=0; i<length; i++) {
         target_page = get_page_from_address(buffer+i);
 
+        // if (target_page == NULL) 
+        //     exit(-1);
         if (write == true && target_page->writable == false)
             exit(-1);
     }

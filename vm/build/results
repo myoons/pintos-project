@@ -69,7 +69,7 @@ pass tests/vm/pt-bad-read
 pass tests/vm/pt-write-code
 pass tests/vm/pt-write-code2
 FAIL tests/vm/pt-grow-stk-sc
-pass tests/vm/page-linear
+FAIL tests/vm/page-linear
 FAIL tests/vm/page-parallel
 FAIL tests/vm/page-merge-seq
 FAIL tests/vm/page-merge-par
