@@ -44,47 +44,47 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-    return true;
-//    int bit;
-//    bool result;
-//	struct anon_page* anon_page = &page->anon;
-//
-//    bit = anon_page->swap_bit;
-//    result = bitmap_test(swap_bitmap, bit);
-//
-//    if (result) {
-//        for (int i = 0; i < PGSIZE / DISK_SECTOR_SIZE; ++i)
-//            disk_read(swap_disk, bit * (PGSIZE / DISK_SECTOR_SIZE) + i, kva + DISK_SECTOR_SIZE * i);
-//
-//        bitmap_set(swap_bitmap, bit, false);
-//    }
-//
-//    return result;
+//    return true;
+    int bit;
+    bool result;
+	struct anon_page* anon_page = &page->anon;
+
+    bit = anon_page->swap_bit;
+    result = bitmap_test(swap_bitmap, bit);
+
+    if (result) {
+        for (int i = 0; i < PGSIZE / DISK_SECTOR_SIZE; ++i)
+            disk_read(swap_disk, bit * (PGSIZE / DISK_SECTOR_SIZE) + i, kva + DISK_SECTOR_SIZE * i);
+
+        bitmap_set(swap_bitmap, bit, false);
+    }
+
+    return result;
 }
 
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
-    return true;
-//    int bit;
-//    bool result;
-//	struct anon_page* anon_page = &page->anon;
-//
-//    bit = bitmap_scan(swap_bitmap, 0, 1, false);
-//    if (bit == BITMAP_ERROR)
-//        result = false;
-//
-//    if (result) {
-//        for (int i = 0; i < PGSIZE / DISK_SECTOR_SIZE; ++i)
-//            disk_write(swap_disk, bit * PGSIZE / DISK_SECTOR_SIZE + i, page->va + DISK_SECTOR_SIZE * i);
-//
-//        bitmap_set(swap_bitmap, bit, true);
-//        pml4_clear_page(thread_current()->pml4, page->va);
-//
-//        anon_page->swap_bit = bit;
-//    }
-//
-//    return result;
+//    return true;
+    int bit;
+    bool result = true;
+	struct anon_page* anon_page = &page->anon;
+
+    bit = bitmap_scan(swap_bitmap, 0, 1, false);
+    if (bit == BITMAP_ERROR)
+        result = false;
+
+    if (result) {
+        for (int i = 0; i < PGSIZE / DISK_SECTOR_SIZE; ++i)
+            disk_write(swap_disk, bit * PGSIZE / DISK_SECTOR_SIZE + i, page->va + DISK_SECTOR_SIZE * i);
+
+        bitmap_set(swap_bitmap, bit, true);
+        pml4_clear_page(thread_current()->pml4, page->va);
+
+        anon_page->swap_bit = bit;
+    }
+
+    return result;
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */

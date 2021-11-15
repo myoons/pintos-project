@@ -400,15 +400,19 @@ bool is_valid_mmap(void* addr, size_t length, off_t ofs) {
 void* mmap (void* addr, size_t length, int writable, int fd, off_t ofs) {
     struct file* target_file;
 
+    /* Is valid condition for mmap. */
+    if (!is_valid_mmap(addr, length, ofs))
+        return NULL;
+
     /* Invalid file descriptor. */
     if (fd < 2)
         exit(-1);
 
-    if (!is_valid_mmap(addr, length, ofs))
+    target_file = get_file_with_fd(fd);
+    if (target_file == NULL)
         return NULL;
 
-    target_file = get_file_with_fd(fd);
-
+    target_file = (thread_current()->file_descriptor_table)[fd];
     if (target_file == NULL)
         return NULL;
 

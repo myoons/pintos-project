@@ -1,4 +1,4 @@
-TOTAL TESTING SCORE: 72.9%
+TOTAL TESTING SCORE: 89.0%
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -10,12 +10,12 @@ tests/threads/Rubric.alarm                      7/  7   1.0%/  1.0%
 tests/threads/Rubric.priority                  25/ 25   1.0%/  1.0%
 tests/userprog/Rubric.functionality            40/ 40   8.0%/  8.0%
 tests/userprog/Rubric.robustness               40/ 40   5.0%/  5.0%
-tests/vm/Rubric.functionality                  45/ 82  32.9%/ 60.0%
+tests/vm/Rubric.functionality                  67/ 82  49.0%/ 60.0%
 tests/vm/Rubric.robustness                     29/ 29  20.0%/ 20.0%
 tests/filesys/base/Rubric                      17/ 17   5.0%/  5.0%
 tests/vm/cow/Rubric                             0/  1   0.0%/ 25.0%
 --------------------------------------------- --- --- ------ ------
-Total                                                  72.9%/125.0%
+Total                                                  89.0%/125.0%
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -167,9 +167,9 @@ Robustness of system calls (tests/userprog/Rubric.robustness):
 
 Functionality of virtual memory subsystem (tests/vm/Rubric.functionality):
 	- Test stack growth.
-	  ** 0/ 2 tests/vm/pt-grow-stack
-	  ** 0/ 4 tests/vm/pt-grow-stk-sc
-	  ** 0/ 3 tests/vm/pt-big-stk-obj
+	     2/ 2 tests/vm/pt-grow-stack
+	     4/ 4 tests/vm/pt-grow-stk-sc
+	     3/ 3 tests/vm/pt-big-stk-obj
 
 	- Test paging behavior.
 	     1/ 1 tests/vm/page-linear
@@ -191,12 +191,12 @@ Functionality of virtual memory subsystem (tests/vm/Rubric.functionality):
 	     3/ 3 tests/vm/mmap-clean
 	     2/ 2 tests/vm/mmap-close
 	     2/ 2 tests/vm/mmap-remove
-	  ** 0/ 1 tests/vm/mmap-off
+	     1/ 1 tests/vm/mmap-off
 
 	- Test memory swapping
-	  ** 0/ 3 tests/vm/swap-anon
-	  ** 0/ 3 tests/vm/swap-file
-	  ** 0/ 6 tests/vm/swap-iter
+	     3/ 3 tests/vm/swap-anon
+	     3/ 3 tests/vm/swap-file
+	     6/ 6 tests/vm/swap-iter
 	     8/ 8 tests/vm/swap-fork
 
 	- Test lazy loading
@@ -204,8 +204,8 @@ Functionality of virtual memory subsystem (tests/vm/Rubric.functionality):
 	     4/ 4 tests/vm/lazy-file
 
 	- Section summary.
-	     17/ 27 tests passed
-	     45/ 82 points subtotal
+	     24/ 27 tests passed
+	     67/ 82 points subtotal
 
 Robustness of virtual memory subsystem (tests/vm/Rubric.robustness):
 	- Test robustness of page table support.
@@ -273,160 +273,6 @@ Functionality of copy-on-write (tests/vm/cow/Rubric):
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-DETAILS OF tests/vm/pt-grow-stack FAILURE:
-
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (pt-grow-stack) begin
-  (pt-grow-stack) cksum: 3424492700
-  (pt-grow-stack) end
-Differences in `diff -u' format:
-  (pt-grow-stack) begin
-- (pt-grow-stack) cksum: 3424492700
-- (pt-grow-stack) end
-
-(Process exit codes are excluded for matching purposes.)
-
-OUTPUT FROM tests/vm/pt-grow-stack:
-
-Kernel command line: -q -f put pt-grow-stack run pt-grow-stack
-0 ~ 9fc00 1
-100000 ~ 13e0000 1
-Pintos booting with: 
-	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
-	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  215,859,200 loops/s.
-hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
-hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
-hd1:0: detected 113 sector (56 kB) disk, model "QEMU HARDDISK", serial "QM00003"
-hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
-Formatting file system...done.
-Boot complete.
-Putting 'pt-grow-stack' into the file system...
-Executing 'pt-grow-stack':
-(pt-grow-stack) begin
-pt-grow-stack: exit(-1)
-Execution of 'pt-grow-stack' complete.
-Timer: 75 ticks
-Thread: 32 idle ticks, 41 kernel ticks, 2 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 85 reads, 254 writes
-hd1:0: 113 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 960 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-DETAILS OF tests/vm/pt-grow-stk-sc FAILURE:
-
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (pt-grow-stk-sc) begin
-  (pt-grow-stk-sc) create "sample.txt"
-  (pt-grow-stk-sc) open "sample.txt"
-  (pt-grow-stk-sc) write "sample.txt"
-  (pt-grow-stk-sc) 2nd open "sample.txt"
-  (pt-grow-stk-sc) read "sample.txt"
-  (pt-grow-stk-sc) compare written data against read data
-  (pt-grow-stk-sc) end
-Differences in `diff -u' format:
-  (pt-grow-stk-sc) begin
-- (pt-grow-stk-sc) create "sample.txt"
-- (pt-grow-stk-sc) open "sample.txt"
-- (pt-grow-stk-sc) write "sample.txt"
-- (pt-grow-stk-sc) 2nd open "sample.txt"
-- (pt-grow-stk-sc) read "sample.txt"
-- (pt-grow-stk-sc) compare written data against read data
-- (pt-grow-stk-sc) end
-
-(Process exit codes are excluded for matching purposes.)
-
-OUTPUT FROM tests/vm/pt-grow-stk-sc:
-
-Kernel command line: -q -f put pt-grow-stk-sc run pt-grow-stk-sc
-0 ~ 9fc00 1
-100000 ~ 13e0000 1
-Pintos booting with: 
-	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
-	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  209,510,400 loops/s.
-hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
-hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
-hd1:0: detected 107 sector (53 kB) disk, model "QEMU HARDDISK", serial "QM00003"
-hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
-Formatting file system...done.
-Boot complete.
-Putting 'pt-grow-stk-sc' into the file system...
-Executing 'pt-grow-stk-sc':
-(pt-grow-stk-sc) begin
-pt-grow-stk-sc: exit(-1)
-Execution of 'pt-grow-stk-sc' complete.
-Timer: 62 ticks
-Thread: 31 idle ticks, 30 kernel ticks, 1 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 83 reads, 242 writes
-hd1:0: 107 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 967 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-DETAILS OF tests/vm/pt-big-stk-obj FAILURE:
-
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (pt-big-stk-obj) begin
-  (pt-big-stk-obj) cksum: 3256410166
-  (pt-big-stk-obj) end
-Differences in `diff -u' format:
-  (pt-big-stk-obj) begin
-- (pt-big-stk-obj) cksum: 3256410166
-- (pt-big-stk-obj) end
-
-(Process exit codes are excluded for matching purposes.)
-
-OUTPUT FROM tests/vm/pt-big-stk-obj:
-
-Kernel command line: -q -f put pt-big-stk-obj run pt-big-stk-obj
-0 ~ 9fc00 1
-100000 ~ 13e0000 1
-Pintos booting with: 
-	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
-	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  157,081,600 loops/s.
-hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
-hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
-hd1:0: detected 113 sector (56 kB) disk, model "QEMU HARDDISK", serial "QM00003"
-hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
-Formatting file system...done.
-Boot complete.
-Putting 'pt-big-stk-obj' into the file system...
-Executing 'pt-big-stk-obj':
-(pt-big-stk-obj) begin
-pt-big-stk-obj: exit(-1)
-Execution of 'pt-big-stk-obj' complete.
-Timer: 65 ticks
-Thread: 35 idle ticks, 29 kernel ticks, 1 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 85 reads, 254 writes
-hd1:0: 113 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 967 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
 DETAILS OF tests/vm/page-merge-par FAILURE:
 
 run: open "buf0": FAILED
@@ -439,7 +285,7 @@ Kernel command line: -q -f put page-merge-par put child-sort run page-merge-par
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  209,510,400 loops/s.
+Calibrating timer...  209,715,200 loops/s.
 hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 218 sector (109 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -469,8 +315,8 @@ child-sort: exit(123)
 (page-merge-par) open "buf0": FAILED
 page-merge-par: exit(1)
 Execution of 'page-merge-par' complete.
-Timer: 1945 ticks
-Thread: 83 idle ticks, 39 kernel ticks, 1823 user ticks
+Timer: 1899 ticks
+Thread: 73 idle ticks, 45 kernel ticks, 1781 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 2442 reads, 6205 writes
 hd1:0: 218 reads, 0 writes
@@ -494,7 +340,7 @@ Kernel command line: -q -f put page-merge-mm put child-qsort-mm run page-merge-m
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  222,412,800 loops/s.
+Calibrating timer...  209,510,400 loops/s.
 hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 224 sector (112 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -525,8 +371,8 @@ child-qsort-mm: exit(80)
 (page-merge-mm) open "buf0": FAILED
 page-merge-mm: exit(1)
 Execution of 'page-merge-mm' complete.
-Timer: 807 ticks
-Thread: 75 idle ticks, 44 kernel ticks, 688 user ticks
+Timer: 755 ticks
+Thread: 82 idle ticks, 39 kernel ticks, 634 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 2458 reads, 6470 writes
 hd1:0: 224 reads, 0 writes
@@ -540,7 +386,7 @@ Powering off...
 
 DETAILS OF tests/vm/page-merge-stk FAILURE:
 
-run: wait for child 0: FAILED
+run: open "buf0": FAILED
 
 OUTPUT FROM tests/vm/page-merge-stk:
 
@@ -550,7 +396,7 @@ Kernel command line: -q -f put page-merge-stk put child-qsort run page-merge-stk
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  215,859,200 loops/s.
+Calibrating timer...  209,510,400 loops/s.
 hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 224 sector (112 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -564,288 +410,33 @@ Executing 'page-merge-stk':
 (page-merge-stk) init
 (page-merge-stk) sort chunk 0
 (page-merge-stk) sort chunk 1
-child-qsort: exit(-1)
 (page-merge-stk) sort chunk 2
-child-qsort: exit(-1)
+child-qsort: exit(72)
 (page-merge-stk) sort chunk 3
-child-qsort: exit(-1)
+child-qsort: exit(72)
 (page-merge-stk) sort chunk 4
-child-qsort: exit(-1)
+child-qsort: exit(72)
 (page-merge-stk) sort chunk 5
-child-qsort: exit(-1)
+child-qsort: exit(72)
 (page-merge-stk) sort chunk 6
-child-qsort: exit(-1)
+child-qsort: exit(72)
 (page-merge-stk) sort chunk 7
-child-qsort: exit(-1)
+child-qsort: exit(72)
 (page-merge-stk) wait for child 0
-(page-merge-stk) wait for child 0: FAILED
+(page-merge-stk) open "buf0": FAILED
 page-merge-stk: exit(1)
 Execution of 'page-merge-stk' complete.
-Timer: 694 ticks
-Thread: 63 idle ticks, 44 kernel ticks, 587 user ticks
+Timer: 1958 ticks
+Thread: 79 idle ticks, 39 kernel ticks, 1840 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 553 reads, 4678 writes
+hd0:1: 2456 reads, 6217 writes
 hd1:0: 224 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1527 characters output
+Console: 1503 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...
 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-DETAILS OF tests/vm/mmap-off FAILURE:
-
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (mmap-off) begin
-  (mmap-off) open "large.txt"
-  (mmap-off) try to mmap with offset 0x1000
-  (mmap-off) validate mmap.
-  (mmap-off) validated.
-  (mmap-off) write to mmap
-  (mmap-off) validate contents.
-  (mmap-off) open "large.txt"
-  (mmap-off) read "large.txt" Page 0
-  (mmap-off) validate page 0.
-  (mmap-off) validated.
-  (mmap-off) read "large.txt" Page 1
-  (mmap-off) validate page 1.
-  (mmap-off) validated.
-  (mmap-off) success
-  (mmap-off) end
-  mmap-off: exit(0)
-Differences in `diff -u' format:
-  (mmap-off) begin
-- (mmap-off) open "large.txt"
-- (mmap-off) try to mmap with offset 0x1000
-- (mmap-off) validate mmap.
-- (mmap-off) validated.
-- (mmap-off) write to mmap
-- (mmap-off) validate contents.
-- (mmap-off) open "large.txt"
-- (mmap-off) read "large.txt" Page 0
-- (mmap-off) validate page 0.
-- (mmap-off) validated.
-- (mmap-off) read "large.txt" Page 1
-- (mmap-off) validate page 1.
-- (mmap-off) validated.
-- (mmap-off) success
-- (mmap-off) end
-- mmap-off: exit(0)
-+ mmap-off: exit(-1)
-
-OUTPUT FROM tests/vm/mmap-off:
-
-Kernel command line: -q -f put mmap-off put large.txt run mmap-off
-0 ~ 9fc00 1
-100000 ~ 13e0000 1
-Pintos booting with: 
-	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
-	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  209,510,400 loops/s.
-hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
-hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
-hd1:0: detected 7,933 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00003"
-hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
-Formatting file system...done.
-Boot complete.
-Putting 'mmap-off' into the file system...
-Putting 'large.txt' into the file system...
-Executing 'mmap-off':
-(mmap-off) begin
-mmap-off: exit(-1)
-Execution of 'mmap-off' complete.
-Timer: 305 ticks
-Thread: 138 idle ticks, 165 kernel ticks, 2 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 108 reads, 15904 writes
-hd1:0: 7933 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 991 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-DETAILS OF tests/vm/swap-anon FAILURE:
-
-Kernel panic in run: PANIC at ../../threads/palloc.c:321 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
-Call stack: 0x800421870b 0x800420bf17 0x800420bf64 0x800420d293 0x800420d316 0x800420d399 0x800420d462 0x800421c5d0 0x800421c4c1 0x8004207751 0x800421da36 0x800421d732 0x80042093fa 0x8004209818
-Translation of call stack:
-0x000000800421870b: debug_panic (lib/kernel/debug.c:32)
-0x000000800420bf17: palloc_free_multiple (threads/palloc.c:322)
-0x000000800420bf64: palloc_free_page (threads/palloc.c:329)
-0x000000800420d293: pt_destroy (threads/mmu.c:160 (discriminator 2))
-0x000000800420d316: pgdir_destroy (threads/mmu.c:170 (discriminator 2))
-0x000000800420d399: pdpe_destroy (threads/mmu.c:180 (discriminator 2))
-0x000000800420d462: pml4_destroy (threads/mmu.c:199)
-0x000000800421c5d0: process_cleanup (userprog/process.c:367)
-0x000000800421c4c1: process_exit (userprog/process.c:333)
-0x0000008004207751: thread_exit (threads/thread.c:458)
-0x000000800421da36: exec (userprog/syscall.c:108)
-0x000000800421d732: page_fault (userprog/exception.c:145)
-0x00000080042093fa: intr_handler (threads/interrupt.c:352)
-0x0000008004209818: intr_entry (threads/intr-stubs.o:?)
-
-OUTPUT FROM tests/vm/swap-anon:
-
-Kernel command line: -q -f put swap-anon run swap-anon
-0 ~ 9fc00 1
-100000 ~ 9e0000 1
-Pintos booting with: 
-	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
-	ext_mem: 0x100000 ~ 0x9e0000 (Usable: 9,088 kB)
-Calibrating timer...  209,510,400 loops/s.
-hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
-hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
-hd1:0: detected 104 sector (52 kB) disk, model "QEMU HARDDISK", serial "QM00003"
-hd1:1: detected 60,480 sector (29 MB) disk, model "QEMU HARDDISK", serial "QM00004"
-Formatting file system...done.
-Boot complete.
-Putting 'swap-anon' into the file system...
-Executing 'swap-anon':
-(swap-anon) begin
-(swap-anon) write sparsely over page 0
-(swap-anon) write sparsely over page 512
-(swap-anon) write sparsely over page 1024
-swap-anon: exit(-1)
-Kernel PANIC at ../../threads/palloc.c:321 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
-Call stack: 0x800421870b 0x800420bf17 0x800420bf64 0x800420d293 0x800420d316 0x800420d399 0x800420d462 0x800421c5d0 0x800421c4c1 0x8004207751 0x800421da36 0x800421d732 0x80042093fa 0x8004209818Interrupt 0x0d (#GP General Protection Exception) at rip=8004222593
- cr2=000000004747ff00 error=               0
-rax ccccccccccccccb4 rbx 00000000ffffffff rcx cccccccccccccccc rdx 0000000000000000
-rsp 0000008004241a18 rbp 0000008004241a40 rsi 0000008004242030 rdi cccccccccccccccc
-rip 0000008004222593 r8 0000000000000001  r9 000000800421bb84 r10 0000000000000000
-r11 0000000000000202 r12 00008004241f5000 r13 0000000000000000 r14 00008004246f1800
-r15 0000800424601800 rflags 00000216
-es: 0010 ds: 0010 cs: 0008 ss: 0010
-Kernel PANIC recursion at ../../userprog/exception.c:97 in kill().
-Timer: 240 ticks
-Thread: 32 idle ticks, 35 kernel ticks, 173 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 80 reads, 236 writes
-hd1:0: 104 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 1940 characters output
-Key
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-DETAILS OF tests/vm/swap-file FAILURE:
-
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (swap-file) begin
-  (swap-file) open "large.txt"
-  (swap-file) mmap "large.txt"
-  (swap-file) end
-Differences in `diff -u' format:
-  (swap-file) begin
-  (swap-file) open "large.txt"
-  (swap-file) mmap "large.txt"
-- (swap-file) end
-
-(Process exit codes are excluded for matching purposes.)
-
-OUTPUT FROM tests/vm/swap-file:
-
-Kernel command line: -q -f put swap-file put large.txt run swap-file
-0 ~ 9fc00 1
-100000 ~ 7e0000 1
-Pintos booting with: 
-	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
-	ext_mem: 0x100000 ~ 0x7e0000 (Usable: 7,040 kB)
-Calibrating timer...  209,510,400 loops/s.
-hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
-hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
-hd1:0: detected 7,931 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00003"
-hd1:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00004"
-Formatting file system...done.
-Boot complete.
-Putting 'swap-file' into the file system...
-Putting 'large.txt' into the file system...
-Executing 'swap-file':
-(swap-file) begin
-(swap-file) open "large.txt"
-(swap-file) mmap "large.txt"
-swap-file: exit(-1)
-Execution of 'swap-file' complete.
-Timer: 468 ticks
-Thread: 193 idle ticks, 139 kernel ticks, 136 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 7944 reads, 15900 writes
-hd1:0: 7931 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 1057 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-DETAILS OF tests/vm/swap-iter FAILURE:
-
-Kernel panic in run: PANIC at ../../threads/palloc.c:321 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
-Call stack: 0x800421870b 0x800420bf17 0x800420bf64 0x800420d293 0x800420d316 0x800420d399 0x800420d462 0x800421c5d0 0x800421c4c1 0x8004207751 0x800421da36 0x800421d732 0x80042093fa 0x8004209818
-Translation of call stack:
-0x000000800421870b: debug_panic (lib/kernel/debug.c:32)
-0x000000800420bf17: palloc_free_multiple (threads/palloc.c:322)
-0x000000800420bf64: palloc_free_page (threads/palloc.c:329)
-0x000000800420d293: pt_destroy (threads/mmu.c:160 (discriminator 2))
-0x000000800420d316: pgdir_destroy (threads/mmu.c:170 (discriminator 2))
-0x000000800420d399: pdpe_destroy (threads/mmu.c:180 (discriminator 2))
-0x000000800420d462: pml4_destroy (threads/mmu.c:199)
-0x000000800421c5d0: process_cleanup (userprog/process.c:367)
-0x000000800421c4c1: process_exit (userprog/process.c:333)
-0x0000008004207751: thread_exit (threads/thread.c:458)
-0x000000800421da36: exec (userprog/syscall.c:108)
-0x000000800421d732: page_fault (userprog/exception.c:145)
-0x00000080042093fa: intr_handler (threads/interrupt.c:352)
-0x0000008004209818: intr_entry (threads/intr-stubs.o:?)
-
-OUTPUT FROM tests/vm/swap-iter:
-
-Kernel command line: -q -f put swap-iter put large.txt run swap-iter
-0 ~ 9fc00 1
-100000 ~ 9e0000 1
-Pintos booting with: 
-	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
-	ext_mem: 0x100000 ~ 0x9e0000 (Usable: 9,088 kB)
-Calibrating timer...  209,510,400 loops/s.
-hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
-hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
-hd1:0: detected 7,932 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00003"
-hd1:1: detected 100,800 sector (49 MB) disk, model "QEMU HARDDISK", serial "QM00004"
-Formatting file system...done.
-Boot complete.
-Putting 'swap-iter' into the file system...
-Putting 'large.txt' into the file system...
-Executing 'swap-iter':
-(swap-iter) begin
-(swap-iter) write sparsely over page 0
-(swap-iter) write sparsely over page 512
-(swap-iter) write sparsely over page 1024
-swap-iter: exit(-1)
-Kernel PANIC at ../../threads/palloc.c:321 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
-Call stack: 0x800421870b 0x800420bf17 0x800420bf64 0x800420d293 0x800420d316 0x800420d399 0x800420d462 0x800421c5d0 0x800421c4c1 0x8004207751 0x800421da36 0x800421d732 0x80042093fa 0x8004209818Interrupt 0x0d (#GP General Protection Exception) at rip=8004222593
- cr2=000000004747ff90 error=               0
-rax ccccccccccccccb4 rbx 00000000ffffffff rcx cccccccccccccccc rdx 0000000000000000
-rsp 0000008004242a18 rbp 0000008004242a40 rsi 0000008004243030 rdi cccccccccccccccc
-rip 0000008004222593 r8 0000000000000001  r9 000000800421bb84 r10 0000000000000000
-r11 0000000000000206 r12 00008004242f5000 r13 0000000000000000 r14 00008004247f1800
-r15 0000800424701800 rflags 00000216
-es: 0010 ds: 0010 cs: 0008 ss: 0010
-Kernel PANIC recursion at ../../userprog/exception.c:97 in kill().
-Timer: 444 ticks
-Thread: 147 idle ticks, 142 kernel ticks, 155 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 116 reads, 15902 writes
-hd1:0: 7932 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 2006 characters output
-Key
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 DETAILS OF tests/vm/cow/cow-simple FAILURE:
@@ -860,7 +451,7 @@ Kernel command line: -q -f put cow-simple run cow-simple
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  209,510,400 loops/s.
+Calibrating timer...  222,412,800 loops/s.
 hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 4,019 sector (1 MB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -880,8 +471,8 @@ child: exit(1)
 (cow-simple) end
 cow-simple: exit(0)
 Execution of 'cow-simple' complete.
-Timer: 178 ticks
-Thread: 78 idle ticks, 95 kernel ticks, 5 user ticks
+Timer: 159 ticks
+Thread: 69 idle ticks, 84 kernel ticks, 6 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 90 reads, 8066 writes
 hd1:0: 4019 reads, 0 writes

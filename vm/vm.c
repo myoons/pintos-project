@@ -80,7 +80,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void* upage, bool writable,
         new_page->writable = writable;
         return spt_insert_page(spt, new_page);
 	}
-    return true;  // TODO(MYOONS)
 err:
     return false;
 }
@@ -233,7 +232,7 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
     result = vm_claim_page(addr);
 
     if (!result) {
-        if ((addr <= USER_STACK) && (thread_rsp <= addr+8) && (USER_STACK - (1 << 40) <= addr)) {
+        if ((addr <= USER_STACK) && (thread_rsp <= addr+8) && (USER_STACK - 0x100000 <= addr)) {
             vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
             result = true;
         }
