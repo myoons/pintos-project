@@ -121,6 +121,10 @@ int exec (const char* file) {
     strlcpy(fn_copy, file, n);
 
     int result;
+
+    if (!lock_held_by_current_thread(&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     result = process_exec(fn_copy);
 
     if (result == -1)
@@ -143,7 +147,15 @@ bool create (const char* file, unsigned initial_size) {
     if (file == NULL)
         exit(-1);
 
+
+    if (!lock_held_by_current_thread(&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     result = filesys_create(file, initial_size);
+
+    if (lock_held_by_current_thread(&lock_for_filesys))
+        lock_release(&lock_for_filesys);
+
     return result;
 }
 
@@ -152,7 +164,13 @@ bool remove (const char* file) {
     is_valid_address((uint64_t*) file);
     bool result;
 
+    if (!lock_held_by_current_thread(&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     result = filesys_remove(file);
+
+    if (lock_held_by_current_thread(&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 
     return result;
 }
@@ -194,15 +212,28 @@ int open (const char* file) {
     if (file == NULL)
         return -1;
 
+    if (!lock_held_by_current_thread(&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     opened_file = filesys_open(file);
+
+    if (lock_held_by_current_thread(&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 
     if (opened_file == NULL)
         result = -1;
     else
         result = put_fd_with_file(opened_file);
 
-    if (result == -1 && opened_file != NULL)
+    if (result == -1 && opened_file != NULL) {
+        if (!lock_held_by_current_thread(&lock_for_filesys))
+            lock_acquire(&lock_for_filesys);
+
         file_close(opened_file);
+
+        if (lock_held_by_current_thread(&lock_for_filesys))
+            lock_release(&lock_for_filesys);
+    }
 
     return result;
 }
@@ -216,9 +247,15 @@ int filesize (int fd) {
 
     if (target_file == NULL)
         result = -1;
-    else
+    else {
+        if (!lock_held_by_current_thread(&lock_for_filesys))
+            lock_acquire(&lock_for_filesys);
+
         result = (int) file_length(target_file);
 
+        if (lock_held_by_current_thread(&lock_for_filesys))
+            lock_release(&lock_for_filesys);
+    }
     return result;
 }
 
@@ -290,8 +327,15 @@ void seek (int fd, unsigned position) {
 
     if (target_file == NULL || target_file <= 2)
         return;
-    else
+    else {
+        if (!lock_held_by_current_thread(&lock_for_filesys))
+            lock_acquire(&lock_for_filesys);
+
         file_seek(target_file, position);
+
+        if (lock_held_by_current_thread(&lock_for_filesys))
+            lock_release(&lock_for_filesys);
+    }
 }
 
 /* Report current position in a file. */
@@ -303,9 +347,16 @@ unsigned tell (int fd) {
 
     if (target_file == NULL || target_file <=2)
         return;
-    else
+    else {
+        if (!lock_held_by_current_thread(&lock_for_filesys))
+            lock_acquire(&lock_for_filesys);
+
         result = (unsigned) file_tell(target_file);
 
+        if (lock_held_by_current_thread(&lock_for_filesys))
+            lock_release(&lock_for_filesys);
+
+    }
     return result;
 }
 
@@ -317,14 +368,6 @@ void close (int fd) {
 
     if (target_file == NULL)
         return;
-
-    /* STDIN. */
-    if(fd == 0 || target_file == 1)
-        thread_current()->n_stdin--;
-
-    /* STDOUT. */
-    else if(fd == 1 || target_file == 2)
-        thread_current()->n_stdout--;
 
     /* Invalid file descriptor. */
     if (fd < 0 || fd >= FD_LIMIT)
@@ -341,37 +384,13 @@ void close (int fd) {
         return;
     }
 
+    if (!lock_held_by_current_thread(&lock_for_filesys))
+        lock_acquire(&lock_for_filesys);
+
     file_close(target_file);
-}
 
-/* Duplicate file descriptor. */
-int dup2(int oldfd, int newfd) {
-    struct file* target_file;
-    struct file** curr_file_descriptor;
-
-    target_file = get_file_with_fd(oldfd);
-    if (target_file == NULL)
-        return -1;
-
-    if (oldfd == newfd)
-        return newfd;
-
-    curr_file_descriptor = thread_current()->file_descriptor_table;
-
-    /* Copy STDIN, STDOUT. */
-    if (target_file == 1)
-        thread_current()->n_stdin++;
-    else if (target_file == 2)
-        thread_current()->n_stdout++;
-    else
-        target_file->n_opened++;
-
-    close(newfd);
-
-    /* Assign duplicated file. */
-    curr_file_descriptor[newfd] = target_file;
-
-    return newfd;
+    if (lock_held_by_current_thread(&lock_for_filesys))
+        lock_release(&lock_for_filesys);
 }
 
 bool is_valid_mmap(void* addr, size_t length, off_t ofs) {
@@ -395,7 +414,6 @@ bool is_valid_mmap(void* addr, size_t length, off_t ofs) {
 
     return result;
 }
-
 
 void* mmap (void* addr, size_t length, int writable, int fd, off_t ofs) {
     struct file* target_file;
@@ -474,9 +492,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
             break;
         case SYS_CLOSE:
             close(f->R.rdi);
-            break;
-        case SYS_DUP2:
-            f->R.rax = dup2(f->R.rdi, f->R.rsi);
             break;
         case SYS_MMAP:
             f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
