@@ -10,4 +10,8 @@ threads/thread.o: ../../threads/thread.c ../../include/threads/thread.h \
  ../../include/threads/loader.h ../../include/intrinsic.h \
  ../../include/threads/mmu.h ../../include/threads/pte.h \
  ../../include/devices/timer.h ../../include/lib/round.h \
+<<<<<<< HEAD
  ../../include/userprog/process.h ../../include/filesys/off_t.h
+=======
+ ../../include/userprog/process.h
+>>>>>>> ca73c9aa079a83e2a40185db07fcdb8cfa9410ea

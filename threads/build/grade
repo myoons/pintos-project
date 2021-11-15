@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 TOTAL TESTING SCORE: 100.0%
 ALL TESTED PASSED -- PERFECT SCORE
+=======
+TOTAL TESTING SCORE: 64.3%
+>>>>>>> ca73c9aa079a83e2a40185db07fcdb8cfa9410ea
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -7,11 +11,19 @@ SUMMARY BY TEST SET
 
 Test Set                                      Pts Max  % Ttl  % Max
 --------------------------------------------- --- --- ------ ------
+<<<<<<< HEAD
 tests/threads/Rubric.alarm                      7/  7  20.0%/ 20.0%
 tests/threads/Rubric.priority                  25/ 25  50.0%/ 50.0%
 tests/threads/mlfqs/Rubric                      9/  9  30.0%/ 30.0%
 --------------------------------------------- --- --- ------ ------
 Total                                                 100.0%/100.0%
+=======
+tests/threads/Rubric.alarm                      5/  7  14.3%/ 20.0%
+tests/threads/Rubric.priority                  25/ 25  50.0%/ 50.0%
+tests/threads/mlfqs/Rubric                      0/  9   0.0%/ 30.0%
+--------------------------------------------- --- --- ------ ------
+Total                                                  64.3%/100.0%
+>>>>>>> ca73c9aa079a83e2a40185db07fcdb8cfa9410ea
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -21,14 +33,23 @@ Functionality and robustness of alarm clock (tests/threads/Rubric.alarm):
 	     1/ 1 tests/threads/alarm-single
 	     1/ 1 tests/threads/alarm-multiple
 	     1/ 1 tests/threads/alarm-simultaneous
+<<<<<<< HEAD
 	     2/ 2 tests/threads/alarm-priority
+=======
+	  ** 0/ 2 tests/threads/alarm-priority
+>>>>>>> ca73c9aa079a83e2a40185db07fcdb8cfa9410ea
 
 	     1/ 1 tests/threads/alarm-zero
 	     1/ 1 tests/threads/alarm-negative
 
 	- Section summary.
+<<<<<<< HEAD
 	      6/  6 tests passed
 	      7/  7 points subtotal
+=======
+	      5/  6 tests passed
+	      5/  7 points subtotal
+>>>>>>> ca73c9aa079a83e2a40185db07fcdb8cfa9410ea
 
 Functionality of priority scheduler (tests/threads/Rubric.priority):
 	     1/ 1 tests/threads/priority-change
@@ -51,6 +72,7 @@ Functionality of priority scheduler (tests/threads/Rubric.priority):
 	     25/ 25 points subtotal
 
 Functionality of advanced scheduler (tests/threads/mlfqs/Rubric):
+<<<<<<< HEAD
 	     1/ 1 tests/threads/mlfqs/mlfqs-load-1
 	     1/ 1 tests/threads/mlfqs/mlfqs-load-60
 	     1/ 1 tests/threads/mlfqs/mlfqs-load-avg
@@ -69,3 +91,460 @@ Functionality of advanced scheduler (tests/threads/mlfqs/Rubric):
 	      9/  9 tests passed
 	      9/  9 points subtotal
 
+=======
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-load-1
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-load-60
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-load-avg
+
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-recent-1
+
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-fair-2
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-fair-20
+
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-nice-2
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-nice-10
+
+	  ** 0/ 1 tests/threads/mlfqs/mlfqs-block
+
+	- Section summary.
+	      0/  9 tests passed
+	      0/  9 points subtotal
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/alarm-priority FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004218337 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004218337: alarm_priority_thread (tests/threads/alarm-priority.c:58)
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/alarm-priority:
+
+Kernel command line: -q run alarm-priority
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  209,510,400 loops/s.
+Boot complete.
+Executing 'alarm-priority':
+(alarm-priority) begin
+(alarm-priority) Thread priority 30 woke up.
+(alarm-priority) Thread priority 29 woke up.
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 00000000000001f2 rcx 000000000000000a rdx 0000000000000002
+rsp 000000800423bf60 rbp 000000800423bf90 rsi 000000000000400f rdi 0000000000000001
+rip 000000800420a2ab r8 000000800423bf1c  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004218337 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 521 ticks
+Thread: 490 idle ticks, 31 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-load-1 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-load-1:
+
+Kernel command line: -q -mlfqs run mlfqs-load-1
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  235,520,000 loops/s.
+Boot complete.
+Executing 'mlfqs-load-1':
+(mlfqs-load-1) begin
+(mlfqs-load-1) spinning for up to 45 seconds, please wait...
+(mlfqs-load-1) load average rose to 0.5 after 42 seconds
+(mlfqs-load-1) sleeping for another 10 seconds, please wait...
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 4300 ticks
+Thread: 0 idle ticks, 4300 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-load-60 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-load-60:
+
+Kernel command line: -q -mlfqs run mlfqs-load-60
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  228,966,400 loops/s.
+Boot complete.
+Executing 'mlfqs-load-60':
+(mlfqs-load-60) begin
+(mlfqs-load-60) Starting 60 niced load threads...
+(mlfqs-load-60) Starting threads took 0 seconds.
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 28 ticks
+Thread: 0 idle ticks, 28 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-load-avg FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-load-avg:
+
+Kernel command line: -q -mlfqs run mlfqs-load-avg
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  235,520,000 loops/s.
+Boot complete.
+Executing 'mlfqs-load-avg':
+(mlfqs-load-avg) begin
+(mlfqs-load-avg) Starting 60 load threads...
+(mlfqs-load-avg) Starting threads took 0 seconds.
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 26 ticks
+Thread: 0 idle ticks, 26 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-recent-1 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-recent-1:
+
+Kernel command line: -q -mlfqs run mlfqs-recent-1
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  210,944,000 loops/s.
+Boot complete.
+Executing 'mlfqs-recent-1':
+(mlfqs-recent-1) begin
+(mlfqs-recent-1) Sleeping 10 seconds to allow recent_cpu to decay, please wait...
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 31 ticks
+Thread: 0 idle ticks, 31 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-fair-2 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-fair-2:
+
+Kernel command line: -q -mlfqs run mlfqs-fair-2
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  235,520,000 loops/s.
+Boot complete.
+Executing 'mlfqs-fair-2':
+(mlfqs-fair-2) begin
+(mlfqs-fair-2) Starting 2 threads...
+(mlfqs-fair-2) Starting threads took 0 ticks.
+(mlfqs-fair-2) Sleeping 40 seconds to let threads run, please wait...
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 26 ticks
+Thread: 0 idle ticks, 26 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-fair-20 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-fair-20:
+
+Kernel command line: -q -mlfqs run mlfqs-fair-20
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  235,520,000 loops/s.
+Boot complete.
+Executing 'mlfqs-fair-20':
+(mlfqs-fair-20) begin
+(mlfqs-fair-20) Starting 20 threads...
+(mlfqs-fair-20) Starting threads took 0 ticks.
+(mlfqs-fair-20) Sleeping 40 seconds to let threads run, please wait...
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 26 ticks
+Thread: 0 idle ticks, 26 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-nice-2 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-nice-2:
+
+Kernel command line: -q -mlfqs run mlfqs-nice-2
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  235,520,000 loops/s.
+Boot complete.
+Executing 'mlfqs-nice-2':
+(mlfqs-nice-2) begin
+(mlfqs-nice-2) Starting 2 threads...
+(mlfqs-nice-2) Starting threads took 0 ticks.
+(mlfqs-nice-2) Sleeping 40 seconds to let threads run, please wait...
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 26 ticks
+Thread: 0 idle ticks, 26 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-nice-10 FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-nice-10:
+
+Kernel command line: -q -mlfqs run mlfqs-nice-10
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  222,412,800 loops/s.
+Boot complete.
+Executing 'mlfqs-nice-10':
+(mlfqs-nice-10) begin
+(mlfqs-nice-10) Starting 10 threads...
+(mlfqs-nice-10) Starting threads took 0 ticks.
+(mlfqs-nice-10) Sleeping 40 seconds to let threads run, please wait...
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 27 ticks
+Thread: 0 idle ticks, 27 kernel ticks, 0 user ticks
+Console: 1
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+DETAILS OF tests/threads/mlfqs/mlfqs-block FAILURE:
+
+Kernel panic in run: PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1
+Translation of call stack:
+0x00000080042140f6: debug_panic (lib/kernel/debug.c:32)
+0x00000080042090de: intr_handler (threads/interrupt.c:365)
+0x0000008004209490: intr_entry (threads/intr-stubs.o:?)
+0x0000008004207a16: idle (threads/thread.c:585 (discriminator 1))
+0x0000008004207aa1: kernel_thread (threads/thread.c:611)
+
+OUTPUT FROM tests/threads/mlfqs/mlfqs-block:
+
+Kernel command line: -q -mlfqs run mlfqs-block
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800420a2ab
+Calibrating timer...  235,520,000 loops/s.
+Boot complete.
+Executing 'mlfqs-block':
+(mlfqs-block) begin
+(mlfqs-block) Main thread acquiring lock.
+(mlfqs-block) Main thread creating block thread, sleeping 25 seconds...
+(mlfqs-block) Block thread spinning for 20 seconds...
+(mlfqs-block) Block thread acquiring lock...
+ cr2=0000000000000018 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000001
+rsp 0000008004234f70 rbp 0000008004234fa0 rsi 0000008004000fa8 rdi 0000000000000001
+rip 000000800420a2ab r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042140f6 0x80042090de 0x8004209490 0x8004207a16 0x8004207aa1.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 2026 ticks
+Thread: 0 idle ticks, 2026 kernel ticks, 0 user ticks
+Console: 1
+>>>>>>> ca73c9aa079a83e2a40185db07fcdb8cfa9410ea
