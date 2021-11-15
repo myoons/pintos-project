@@ -316,7 +316,25 @@ thread_create (const char *name, int priority,
 
     /* Initialize thread. */
 	init_thread (t, name, priority);
-	tid = t->tid = allocate_tid ();
+
+    /* File descriptor. */
+    t->file_descriptor_table = palloc_get_multiple(PAL_ZERO, N_FDT);
+    if (t->file_descriptor_table == NULL)
+        return TID_ERROR;
+
+    /* Initialize index as 2. (STDIN, STDOUT) */
+    t->file_descriptor_index = 2;
+    t->file_descriptor_table[0] = 999999;
+    t->file_descriptor_table[1] = 999999;
+
+    /* Count STDIN, STDOUT. */
+    t->n_stdin = 1;
+    t->n_stdout = 1;
+
+    tid = t->tid = allocate_tid ();
+
+    /* Push created list to current thread's child list. */
+    list_push_front(&(thread_current()->list_child_processes), &(t->elem_for_child));
 
     enum intr_level old_level = intr_disable();
 
@@ -456,7 +474,6 @@ thread_yield (void) {
 
     old_level = intr_disable();
 
-    list_sort(&ready_list, priority_less, NULL);
     if (curr != idle_thread) {
         /* Thread that was currently running should be pushed back to ready list .
          * Then sort the threads in ready list ascending order of priority */
@@ -639,7 +656,6 @@ init_thread (struct thread *t, const char *name, int priority) {
     /* Initialize lists */
     list_init(&t->list_donated_threads);
     list_init(&t->list_child_processes);
-    list_init(&t->list_struct_fds);
 
     /* Initialize semaphore waiting parent threads */
     sema_init(&t->sema_for_fork, 0);
@@ -650,8 +666,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 
     /* Add to thread pool */
     list_push_front(&thread_pool, &t->elem_for_pool);
-    list_push_front(&(running_thread()->list_child_processes), &t->elem_for_child);
-
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -832,4 +846,21 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+
+void yield_if_max_priority(void){
+    struct thread* current_thread;
+    struct thread* max_priority_thread;
+
+    current_thread = thread_current();
+
+    /* If interrupt isn't available or no thread is waiting. */
+    if(intr_context() || list_empty(&ready_list))
+        return;
+
+    max_priority_thread = list_entry(list_back(&ready_list), struct thread, elem);
+
+    if(max_priority_thread->priority > current_thread->priority)
+        thread_yield();
 }

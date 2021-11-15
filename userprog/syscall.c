@@ -16,14 +16,14 @@
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-bool less_fd(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 void is_valid_address (uint64_t* uaddr);
 struct page* get_page_from_address (uint64_t* addr);
 void is_valid_buffer(void* buffer, unsigned length, bool writable);
-struct struct_fd* get_struct_with_fd (int fd);
+struct file* get_file_with_fd (int fd);
 int put_fd_with_file (struct file* target_file);
-bool is_valid_mmap(void* addr, size_t length, off_t ofs, struct file* target_file);
+bool is_valid_mmap(void* addr, size_t length, off_t ofs);
+int wait (tid_t tid);
 
 /* System call.
  *
@@ -111,12 +111,14 @@ int exec (const char* file) {
     /* Copy file name for parsing; It should not affect other jobs using file_name */
     int n;
     char* fn_copy;
+
     n = strlen(file) + 1;
-    fn_copy = (char*) palloc_get_page(PAL_ZERO);
+
+    fn_copy = palloc_get_page(PAL_ZERO);
     if (fn_copy == NULL)
         exit(-1);
 
-    strlcpy (fn_copy, file, n);
+    strlcpy(fn_copy, file, n);
 
     int result;
     result = process_exec(fn_copy);
@@ -130,20 +132,18 @@ int exec (const char* file) {
 }
 
 /* Wait for a child process to die. */
-int wait (pid_t pid) {
-    return process_wait(pid);
+int wait (tid_t tid) {
+    return process_wait(tid);
 }
 
 /* Create a file. */
 bool create (const char* file, unsigned initial_size) {
-    is_valid_address((uint64_t*) file);
     bool result;
 
     if (file == NULL)
         exit(-1);
 
     result = filesys_create(file, initial_size);
-
     return result;
 }
 
@@ -157,56 +157,32 @@ bool remove (const char* file) {
     return result;
 }
 
-struct struct_fd* get_struct_with_fd (int fd) {
-    struct list_elem* current_list_elem;
-    struct struct_fd* to_find_struct_fd;
+struct file* get_file_with_fd (int fd) {
+    struct file* target_file;
 
-    if (!list_empty(&(thread_current()->list_struct_fds))) {
-        current_list_elem = list_begin(&(thread_current()->list_struct_fds));
+    /* Invalid file descriptor. */
+    if (fd >= FD_LIMIT || fd <0)
+        return NULL;
 
-        while (current_list_elem != list_end(&(thread_current()->list_struct_fds))) {
-            struct struct_fd* target_struct_fd = list_entry (current_list_elem, struct struct_fd, elem);
-            if (fd == target_struct_fd->fd) {
-                to_find_struct_fd = target_struct_fd;
-                break;
-            }
-            current_list_elem = list_next(current_list_elem);
-        }
-    }
-
-    return to_find_struct_fd;
+    target_file = thread_current()->file_descriptor_table[fd];
+    return target_file;
 }
 
 int put_fd_with_file (struct file* target_file) {
-    int stored_fd = 2;
-    struct list_elem* current_elem;
     struct thread* curr = thread_current();
-    struct struct_fd* target_struct_fd = (struct struct_fd*) malloc(sizeof(struct struct_fd));
+    struct file** curr_fdt = curr->file_descriptor_table;
 
-    target_struct_fd->file = target_file;
-    target_struct_fd->fd = -1;
+    /* Find empty file descriptor index. */
+    while(curr->file_descriptor_index < FD_LIMIT && curr_fdt[curr->file_descriptor_index])
+        curr->file_descriptor_index++;
 
-    if (list_empty(&curr->list_struct_fds))
-        target_struct_fd->fd = stored_fd;
-    else {
-        for (current_elem=list_begin(&curr->list_struct_fds); current_elem != list_end(&curr->list_struct_fds);
-             current_elem=list_next(current_elem))
-            stored_fd++;
+    /* If file descriptor table is full. */
+    if (curr->file_descriptor_index >= FD_LIMIT)
+        return -1;
 
-        target_struct_fd->fd = stored_fd;
-    }
-
-    list_insert_ordered(&curr->list_struct_fds, &target_struct_fd->elem, less_fd, NULL);
-    return stored_fd;
+    curr_fdt[curr->file_descriptor_index] = target_file;
+    return curr->file_descriptor_index;
 }
-
-bool
-less_fd(const struct list_elem* first_elem, const struct list_elem* second_elem, void *aux UNUSED){
-    int first_fd = list_entry(first_elem, struct struct_fd, elem)->fd;
-    int second_fd = list_entry(second_elem, struct struct_fd, elem)->fd;
-    return first_fd < second_fd;
-}
-
 
 /* Open a file. */
 int open (const char* file) {
@@ -214,15 +190,14 @@ int open (const char* file) {
     struct file* opened_file;
     int result;
 
+    /* For open-bad-ptr. */
     if (file == NULL)
         return -1;
 
     opened_file = filesys_open(file);
 
-    if (opened_file == NULL) {
-        thread_current()->exit_status = -1;
+    if (opened_file == NULL)
         result = -1;
-    }
     else
         result = put_fd_with_file(opened_file);
 
@@ -236,20 +211,13 @@ int open (const char* file) {
 int filesize (int fd) {
     int result;
     struct file* target_file;
-    struct struct_fd* target_struct_fd;
 
-    target_struct_fd = get_struct_with_fd(fd);
+    target_file = get_file_with_fd(fd);
 
-    if (target_struct_fd == NULL)
+    if (target_file == NULL)
         result = -1;
-    else {
-        target_file = target_struct_fd->file;
-
-        if (target_file == NULL)
-            result = -1;
-        else
-            result = (int) file_length(target_file);
-    }
+    else
+        result = (int) file_length(target_file);
 
     return result;
 }
@@ -258,7 +226,6 @@ int filesize (int fd) {
 int read (int fd, void* buffer, unsigned length) {
     int result;
     struct file* target_file;
-    struct struct_fd* target_struct_fd;
 
     if (fd == 0) {
         input_getc(buffer, length);
@@ -267,10 +234,9 @@ int read (int fd, void* buffer, unsigned length) {
     else if (fd == 1)
         result = -1;
     else {
-        target_struct_fd = get_struct_with_fd(fd);
-        target_file = target_struct_fd->file;
+        target_file = get_file_with_fd(fd);
 
-        if (target_struct_fd == NULL)
+        if (target_file == NULL)
             result = -1;
         else {
             if (!lock_held_by_current_thread(&lock_for_filesys))
@@ -290,7 +256,6 @@ int read (int fd, void* buffer, unsigned length) {
 int write (int fd, const void* buffer, unsigned length) {
     int result;
     struct file* target_file;
-    struct struct_fd* target_struct_fd;
 
     if (fd == 0)
         result = -1;
@@ -299,16 +264,15 @@ int write (int fd, const void* buffer, unsigned length) {
         result = length;
     }
     else {
-        target_struct_fd = get_struct_with_fd(fd);
-        target_file = target_struct_fd->file;
+        target_file = get_file_with_fd(fd);
 
-        if (target_struct_fd == NULL)
+        if (target_file == NULL)
             result = -1;
         else {
             if (!lock_held_by_current_thread(&lock_for_filesys))
                 lock_acquire(&lock_for_filesys);
 
-            result = (int) file_write(target_struct_fd->file, buffer, length);
+            result = (int) file_write(target_file, buffer, length);
 
             if (lock_held_by_current_thread(&lock_for_filesys))
                 lock_release(&lock_for_filesys);
@@ -321,61 +285,96 @@ int write (int fd, const void* buffer, unsigned length) {
 /* Change position in a file. */
 void seek (int fd, unsigned position) {
     struct file* target_file;
-    struct struct_fd* target_struct_fd;
 
-    target_struct_fd = get_struct_with_fd(fd);
+    target_file = get_file_with_fd(fd);
 
-    if (target_struct_fd != NULL) {
-        target_file = target_struct_fd->file;
-
-        if (target_file != NULL)
-            file_seek(target_file, position);
-    }
+    if (target_file == NULL || target_file <= 2)
+        return;
+    else
+        file_seek(target_file, position);
 }
 
 /* Report current position in a file. */
 unsigned tell (int fd) {
     unsigned result;
     struct file* target_file;
-    struct struct_fd* target_struct_fd;
 
-    if (fd <= 1)
+    target_file = get_file_with_fd(fd);
+
+    if (target_file == NULL || target_file <=2)
         return;
-
-    target_struct_fd = get_struct_with_fd(fd);
-
-    if (target_struct_fd != NULL) {
-        target_file = target_struct_fd->file;
-
-        if (target_file != NULL)
-            result = (unsigned) file_tell(target_struct_fd->file);
-    }
+    else
+        result = (unsigned) file_tell(target_file);
 
     return result;
 }
 
 /* Close a file. */
 void close (int fd) {
-    struct struct_fd* target_struct_fd;
+    struct file* target_file;
 
-    if (fd <= 1)
+    target_file = get_file_with_fd(fd);
+
+    if (target_file == NULL)
         return;
 
-    target_struct_fd = get_struct_with_fd(fd);
+    /* STDIN. */
+    if(fd == 0 || target_file == 1)
+        thread_current()->n_stdin--;
 
-    if (target_struct_fd == NULL)
+    /* STDOUT. */
+    else if(fd == 1 || target_file == 2)
+        thread_current()->n_stdout--;
+
+    /* Invalid file descriptor. */
+    if (fd < 0 || fd >= FD_LIMIT)
         return;
 
-    if (target_struct_fd->file != NULL) {
-        file_close(target_struct_fd->file);
-        target_struct_fd->file = NULL;
+    thread_current()->file_descriptor_table[fd] = NULL;
+
+    /* STDIN, STDOUT. */
+    if (fd <=1 || target_file <= 2)
+        return;
+
+    if (target_file->n_opened != 0) {
+        target_file->n_opened--;
+        return;
     }
 
-    list_remove(&(target_struct_fd->elem));
-    free(target_struct_fd);
+    file_close(target_file);
 }
 
-bool is_valid_mmap(void* addr, size_t length, off_t ofs, struct file* target_file) {
+/* Duplicate file descriptor. */
+int dup2(int oldfd, int newfd) {
+    struct file* target_file;
+    struct file** curr_file_descriptor;
+
+    target_file = get_file_with_fd(oldfd);
+    if (target_file == NULL)
+        return -1;
+
+    if (oldfd == newfd)
+        return newfd;
+
+    curr_file_descriptor = thread_current()->file_descriptor_table;
+
+    /* Copy STDIN, STDOUT. */
+    if (target_file == 1)
+        thread_current()->n_stdin++;
+    else if (target_file == 2)
+        thread_current()->n_stdout++;
+    else
+        target_file->n_opened++;
+
+    close(newfd);
+
+    /* Assign duplicated file. */
+    curr_file_descriptor[newfd] = target_file;
+
+    return newfd;
+}
+
+bool is_valid_mmap(void* addr, size_t length, off_t ofs) {
     bool result = true;
 
     /* Duplicated page. */
@@ -394,9 +393,6 @@ bool is_valid_mmap(void* addr, size_t length, off_t ofs, struct file* target_fil
     if ((long long) length <= 0)
         result = false;
 
-    if (target_file == NULL)
-        result = false;
-
     return result;
 }
 
@@ -408,8 +404,12 @@ void* mmap (void* addr, size_t length, int writable, int fd, off_t ofs) {
     if (fd < 2)
         exit(-1);
 
-    target_file = get_struct_with_fd(fd)->file;
-    if (!is_valid_mmap(addr, length, ofs, target_file))
+    if (!is_valid_mmap(addr, length, ofs))
+        return NULL;
+
+    target_file = get_file_with_fd(fd);
+
+    if (target_file == NULL)
         return NULL;
 
     return do_mmap(addr, length, writable, target_file, ofs);
@@ -466,10 +466,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
             seek(f->R.rdi, f->R.rsi);
             break;
         case SYS_TELL:
-            tell(f->R.rdi);
+            f->R.rax = tell(f->R.rdi);
             break;
         case SYS_CLOSE:
             close(f->R.rdi);
+            break;
+        case SYS_DUP2:
+            f->R.rax = dup2(f->R.rdi, f->R.rsi);
             break;
         case SYS_MMAP:
             f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);

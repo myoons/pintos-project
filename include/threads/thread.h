@@ -29,6 +29,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Pages. */
+#define N_FDT 3
+#define FD_LIMIT N_FDT* (1 << 9)
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -110,13 +114,17 @@ struct thread {
     int exit_status;                    /* Exit status of the corresponding thread */
     struct list list_child_processes;   /* List of child processes that corresponding thread has created. */
     struct list_elem elem_for_child;    /* List element for child processes. */
-    struct semaphore sema_for_wait;  /* Semaphore to make parent thread block. */
+    struct semaphore sema_for_wait;     /* Semaphore to make parent thread block. */
 
-    struct list list_struct_fds;        /* List of structure fds of the corresponding thread. */
+    struct file** file_descriptor_table;  /* File descriptor pointer. */
+    int file_descriptor_index;
 
     struct semaphore sema_for_fork;     /* Semaphore to block thread while forking. */
     struct file* curr_exec_file;        /* File the corresponding thread is currently executing. */
     struct semaphore sema_for_free;
+
+    int n_stdin;                        /* Count stdin for copy. */
+    int n_stdout;                       /* Count stdout for copy. */
 
     /* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -178,13 +186,9 @@ bool priority_less (const struct list_elem*, const struct list_elem*, void*);
 
 int calculate_priority (int recent_cpu, int nice);
 
-/* Struct to store the file descriptor (int) and file*. */
-struct struct_fd {
-    int fd;
-    struct file* file;
-    struct list_elem elem;
-};
-
 /* Unlike `priority` and `recent_cpu`, `load_avg` is system-wide */
 int load_avg;
+
+void yield_if_max_priority(void);
+
 #endif /* threads/thread.h */

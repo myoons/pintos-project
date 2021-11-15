@@ -179,7 +179,10 @@ __do_fork (void *aux) {
     /* 1. Read the cpu context to local stack. */
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
 
-	/* 2. Duplicate PT */
+    /* Set return fale. */
+    if_.R.rax = 0;
+
+    /* 2. Duplicate PT */
 	current->pml4 = pml4_create();
 	if (current->pml4 == NULL)
 		goto error;
@@ -193,28 +196,31 @@ __do_fork (void *aux) {
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
-
+    bool is_exist;
+    struct file* copy_file;
+    struct file* target_file;
     struct list_elem* current_list_elem;
-    struct struct_fd* struct_fd_for_child;
-    struct struct_fd* target_struct_fd;
 
-    if (!list_empty(&(parent->list_struct_fds))) {
-        current_list_elem = list_begin(&(parent->list_struct_fds));
+    // TODO : Condition of setting is_exist TRUE
+    for (int i = 0; i < FD_LIMIT; i++) {
+        target_file = parent->file_descriptor_table[i];
 
-        while (current_list_elem != list_end(&(parent->list_struct_fds))) {
-            target_struct_fd = list_entry (current_list_elem, struct struct_fd, elem);
+        if (target_file == NULL)
+            continue;
 
-            struct_fd_for_child = (struct struct_fd*) malloc(sizeof(struct struct_fd));
+        is_exist = false;
+        if (!is_exist) {
+            /* STDIN, STDOUT = 999999. */
+            if (target_file != 999999)
+                copy_file = file_duplicate(target_file);
+            else
+                copy_file = target_file;
 
-            struct_fd_for_child->file = file_duplicate(target_struct_fd->file);
-            struct_fd_for_child->fd = target_struct_fd->fd;
-
-            list_push_front(&(current->list_struct_fds), &struct_fd_for_child->elem);
-
-            current_list_elem = list_next(current_list_elem);
+            current->file_descriptor_table[i] = copy_file;
         }
     }
 
+    current->file_descriptor_index = parent->file_descriptor_index;
     sema_up(&(current->sema_for_fork));
 
 	/* Finally, switch to the newly created process. */
@@ -254,11 +260,12 @@ process_exec (void *f_name) {
 	success = load (file_name, &_if);
 
     /* If load failed, quit. */
-    palloc_free_page (file_name);
     if (!success) {
+        palloc_free_page (file_name);
         return -1;
     }
 
+    palloc_free_page (file_name);
     /* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -301,7 +308,6 @@ process_wait (tid_t child_tid) {
     sema_down(&(child_thread_to_wait->sema_for_wait));
     list_remove(&(child_thread_to_wait->elem_for_child));
     sema_up(&(child_thread_to_wait->sema_for_free));
-
     return child_thread_to_wait->exit_status;
 }
 
@@ -312,33 +318,23 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-    struct list_elem* current_list_elem;
-    struct struct_fd* target_struct_fd;
 
-    while (!list_empty(&(thread_current()->list_struct_fds))) {
-        current_list_elem = list_pop_front(&thread_current()->list_struct_fds);
-        target_struct_fd = list_entry(current_list_elem, struct struct_fd, elem);
+    for (int i = 0; i < FD_LIMIT; i++)
+        close(i);
 
-        free(target_struct_fd);
-    }
+    palloc_free_multiple(thread_current()->file_descriptor_table, N_FDT);
 
-    if (thread_current()->curr_exec_file != NULL) {
-        file_close(thread_current()->curr_exec_file);
-        thread_current()->curr_exec_file = NULL;
-    }
+    /* Close currently executing file. */
+    file_close(thread_current()->curr_exec_file);
 
+    /* Clean up. */
     process_cleanup();
 
-    if (!list_empty(&(thread_current()->list_child_processes))) {
-        current_list_elem = list_begin(&(thread_current()->list_child_processes));
-
-        while (current_list_elem != list_end(&(thread_current()->list_child_processes)))
-            current_list_elem = list_remove(current_list_elem);
-    }
-
     thread_current()->tf.R.rax=thread_current()->exit_status;
+
+    /* Process change. */
     sema_up(&(thread_current()->sema_for_wait));
-	sema_down(&(thread_current()->sema_for_free));
+    sema_down(&(thread_current()->sema_for_free));
 }
 
 /* Free the current process's resources. */
@@ -475,7 +471,10 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	}
 
-	/* Read and verify executable header. */
+    thread_current()->curr_exec_file = file;
+    file_deny_write(file);
+
+    /* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
 			|| ehdr.e_type != 2
@@ -494,6 +493,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 		if (file_ofs < 0 || file_ofs > file_length (file))
 			goto done;
+
 		file_seek (file, file_ofs);
 
 		if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
@@ -553,7 +553,6 @@ load (const char *file_name, struct intr_frame *if_) {
     success = true;
 done:
     /* We arrive here whether the load is successful or not. */
-    thread_current()->curr_exec_file = file;
     return success;
 }
 
@@ -720,7 +719,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
-    printf
+
 	file_seek (file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.

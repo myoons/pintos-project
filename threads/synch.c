@@ -67,8 +67,7 @@ sema_down (struct semaphore *sema) {
 	while (sema->value == 0) {
         /* Thread should be pushed to waiting list of the corresponding sema .
          * Then sort the threads in waiting list ascending order of priority */
-        list_push_front (&sema->waiters, &thread_current()->elem);
-        list_sort (&sema->waiters, priority_less, NULL);
+        list_insert_ordered(&(sema->waiters), &thread_current()->elem, priority_less, NULL);
 
         thread_block ();
 	}
@@ -115,25 +114,25 @@ sema_up (struct semaphore *sema) {
 
     old_level = intr_disable ();
 
-    sema->value++;
     if (!list_empty (&sema->waiters)) {
-
         /* Sort the threads in waiting list ascending order of priority */
         list_sort(&sema->waiters, priority_less, NULL);
-        max_priority_waiter = list_entry(list_pop_back(&sema->waiters), struct thread, elem);
 
         /* Since waiting list is sorted ascending order of priority,
-         * pop thread from the back of waiting list which has the highest priority */
+        * pop thread from the back of waiting list which has the highest priority */
+        max_priority_waiter = list_entry(list_pop_back(&sema->waiters), struct thread, elem);
+
+        /* Unblock. */
         thread_unblock(max_priority_waiter);
-
-        intr_set_level (old_level);
-
-        if (!intr_context())
-            thread_yield();
-    } else {
-        intr_set_level (old_level);
     }
 
+    /* Increase semaphore since job is finished. */
+    sema->value++;
+
+    /* If current thread doesn't have max priority, yield. */
+    yield_if_max_priority();
+
+    intr_set_level (old_level);
 }
 
 static void sema_test_helper (void *sema_);
@@ -209,7 +208,7 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!lock_held_by_current_thread (lock));
 
     if (!thread_mlfqs) {
-        struct thread *thread_holding_lock = lock->holder;
+        struct thread* thread_holding_lock = lock->holder;
         /* If the lock is already held by other thread */
         if (thread_holding_lock != NULL) {
 
@@ -225,7 +224,7 @@ lock_acquire (struct lock *lock) {
                 list_sort(&thread_holding_lock->list_donated_threads, priority_less, NULL);
 
                 /* Donation for nested locks */
-                struct thread *next_thread = thread_current()->lock_on_waiting->holder;
+                struct thread* next_thread = thread_current()->lock_on_waiting->holder;
 
                 /* Maximum nested depth is 8 */
                 for (int i = 1; i <= 8; i++) {
@@ -321,6 +320,7 @@ lock_release (struct lock *lock) {
         }
     }
 
+    lock->holder = NULL;
 	sema_up (&lock->semaphore);
 }
 
