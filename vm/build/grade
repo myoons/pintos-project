@@ -275,7 +275,7 @@ Functionality of copy-on-write (tests/vm/cow/Rubric):
 
 DETAILS OF tests/vm/page-merge-par FAILURE:
 
-run: open "buf0": FAILED
+run: open "buf6": FAILED
 
 OUTPUT FROM tests/vm/page-merge-par:
 
@@ -285,7 +285,7 @@ Kernel command line: -q -f put page-merge-par put child-sort run page-merge-par
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  209,715,200 loops/s.
+Calibrating timer...  209,510,400 loops/s.
 hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 218 sector (109 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -309,19 +309,16 @@ child-sort: exit(123)
 child-sort: exit(123)
 (page-merge-par) sort chunk 6
 child-sort: exit(123)
-(page-merge-par) sort chunk 7
-child-sort: exit(123)
-(page-merge-par) wait for child 0
-(page-merge-par) open "buf0": FAILED
+(page-merge-par) open "buf6": FAILED
 page-merge-par: exit(1)
 Execution of 'page-merge-par' complete.
-Timer: 1899 ticks
-Thread: 73 idle ticks, 45 kernel ticks, 1781 user ticks
+Timer: 1539 ticks
+Thread: 69 idle ticks, 38 kernel ticks, 1432 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 2442 reads, 6205 writes
+hd0:1: 1772 reads, 5170 writes
 hd1:0: 218 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1501 characters output
+Console: 1415 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...
@@ -340,7 +337,7 @@ Kernel command line: -q -f put page-merge-mm put child-qsort-mm run page-merge-m
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  209,510,400 loops/s.
+Calibrating timer...  209,715,200 loops/s.
 hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 224 sector (112 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -371,8 +368,8 @@ child-qsort-mm: exit(80)
 (page-merge-mm) open "buf0": FAILED
 page-merge-mm: exit(1)
 Execution of 'page-merge-mm' complete.
-Timer: 755 ticks
-Thread: 82 idle ticks, 39 kernel ticks, 634 user ticks
+Timer: 831 ticks
+Thread: 86 idle ticks, 46 kernel ticks, 699 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 2458 reads, 6470 writes
 hd1:0: 224 reads, 0 writes
@@ -386,7 +383,7 @@ Powering off...
 
 DETAILS OF tests/vm/page-merge-stk FAILURE:
 
-run: open "buf0": FAILED
+run: open "buf2": FAILED
 
 OUTPUT FROM tests/vm/page-merge-stk:
 
@@ -412,27 +409,16 @@ Executing 'page-merge-stk':
 (page-merge-stk) sort chunk 1
 (page-merge-stk) sort chunk 2
 child-qsort: exit(72)
-(page-merge-stk) sort chunk 3
-child-qsort: exit(72)
-(page-merge-stk) sort chunk 4
-child-qsort: exit(72)
-(page-merge-stk) sort chunk 5
-child-qsort: exit(72)
-(page-merge-stk) sort chunk 6
-child-qsort: exit(72)
-(page-merge-stk) sort chunk 7
-child-qsort: exit(72)
-(page-merge-stk) wait for child 0
-(page-merge-stk) open "buf0": FAILED
+(page-merge-stk) open "buf2": FAILED
 page-merge-stk: exit(1)
 Execution of 'page-merge-stk' complete.
-Timer: 1958 ticks
-Thread: 79 idle ticks, 39 kernel ticks, 1840 user ticks
+Timer: 439 ticks
+Thread: 39 idle ticks, 29 kernel ticks, 371 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 2456 reads, 6217 writes
+hd0:1: 464 reads, 2062 writes
 hd1:0: 224 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1503 characters output
+Console: 1206 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...
@@ -451,7 +437,7 @@ Kernel command line: -q -f put cow-simple run cow-simple
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  222,412,800 loops/s.
+Calibrating timer...  235,520,000 loops/s.
 hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 4,019 sector (1 MB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -471,8 +457,8 @@ child: exit(1)
 (cow-simple) end
 cow-simple: exit(0)
 Execution of 'cow-simple' complete.
-Timer: 159 ticks
-Thread: 69 idle ticks, 84 kernel ticks, 6 user ticks
+Timer: 163 ticks
+Thread: 79 idle ticks, 80 kernel ticks, 4 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 90 reads, 8066 writes
 hd1:0: 4019 reads, 0 writes
