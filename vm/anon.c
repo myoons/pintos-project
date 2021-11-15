@@ -44,7 +44,6 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-//    return true;
     int bit;
     bool result;
 	struct anon_page* anon_page = &page->anon;
@@ -65,7 +64,6 @@ anon_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
-//    return true;
     int bit;
     bool result = true;
 	struct anon_page* anon_page = &page->anon;

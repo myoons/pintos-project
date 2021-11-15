@@ -32,7 +32,6 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the file. */
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
-//    return true;
     off_t ofs;
     struct file_aux* faux;
     struct file* target_file;
@@ -63,7 +62,6 @@ file_backed_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
-//    return true;
     struct thread* curr;
     struct file_aux* faux;
 
