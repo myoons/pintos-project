@@ -232,7 +232,7 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
     result = vm_claim_page(addr);
 
     if (!result) {
-        if ((addr <= USER_STACK) && (thread_rsp <= addr+8) && (USER_STACK - 0x100000 <= addr)) {
+        if ((addr <= USER_STACK) && (thread_rsp <= addr+8) && (USER_STACK - (0x1 << 20) <= addr)) {
             vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
             result = true;
         }
