@@ -201,7 +201,7 @@ static void
 vm_stack_growth (void* addr) {
     if (vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1)) {
         vm_claim_page(addr);
-        thread_current()->stack_bottom -= PGSIZE;
+        thread_current()->stack_pointer -= PGSIZE;
     }
 }
 
@@ -233,7 +233,7 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
 
     if (!result) {
         if ((addr <= USER_STACK) && (thread_rsp <= addr+8) && (USER_STACK - (0x1 << 20) <= addr)) {
-            vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+            vm_stack_growth(thread_current()->stack_pointer - PGSIZE);
             result = true;
         }
     }

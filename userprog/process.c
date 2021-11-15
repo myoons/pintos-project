@@ -33,6 +33,8 @@ process_init (void) {
 	struct thread *current = thread_current ();
 }
 
+extern struct lock lock_for_filesys;
+
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
  * The new thread may be scheduled (and may even exit)
  * before process_create_initd() returns. Returns the initd's
@@ -266,6 +268,10 @@ process_exec (void *f_name) {
     }
 
     palloc_free_page (file_name);
+
+    if (lock_held_by_current_thread(&lock_for_filesys))
+        lock_release(&lock_for_filesys);
+
     /* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -878,14 +884,13 @@ bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
     struct thread* curr = thread_current();
-	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
 
     /* Allocate page. (Type, Upage, writable) */
-    if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1))
-        success = vm_claim_page(stack_bottom);
+    if (vm_alloc_page(VM_ANON | VM_MARKER_0, ((uint8_t *) USER_STACK) - PGSIZE, 1))
+        success = vm_claim_page(((uint8_t *) USER_STACK) - PGSIZE);
 
     if (success) {
-        curr->stack_bottom = stack_bottom;
+        curr->stack_pointer = ((uint8_t *) USER_STACK) - PGSIZE;
         if_->rsp = USER_STACK;
     }
 

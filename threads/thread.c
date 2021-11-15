@@ -327,9 +327,6 @@ thread_create (const char *name, int priority,
     t->file_descriptor_table[0] = 999999;
     t->file_descriptor_table[1] = 999999;
 
-    /* Count STDIN, STDOUT. */
-    t->n_stdin = 1;
-    t->n_stdout = 1;
 
     tid = t->tid = allocate_tid ();
 
