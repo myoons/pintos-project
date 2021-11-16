@@ -191,8 +191,6 @@ vm_get_frame (void) {
     /* Make page NULL so that it could connect to new virtual page. */
     new_frame->page = NULL;
 
-    ASSERT (new_frame != NULL);
-    ASSERT (new_frame->page == NULL);
     return new_frame;
 }
 
@@ -218,16 +216,13 @@ vm_try_handle_fault (struct intr_frame* f, void *addr,
     void* thread_rsp;
 
     /* Virtual address should be in user pool. */
-    if (is_kernel_vaddr(addr))
+    if (!is_user_vaddr(addr))
         return false;
 
     if (is_kernel_vaddr(f->rsp))
         thread_rsp = thread_current()->rsp;
     else
         thread_rsp = f->rsp;
-
-    if (!not_present)
-        return not_present;
 
     result = vm_claim_page(addr);
 
@@ -322,10 +317,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst, struct supple
                 return false;
         }
         else {
-            if(!vm_alloc_page(source_page_type, source_page_va, source_page_writable))
-                return false;
-
-            if(!vm_claim_page(source_page_va))
+            if(!(vm_alloc_page(source_page_type, source_page_va, source_page_writable) && vm_claim_page(source_page_va) ))
                 return false;
         }
 
@@ -346,12 +338,13 @@ hash_destroy_func(struct hash_elem* target_elem, void* aux UNUSED) {
 /* Free the resource hold by the supplemental page table */
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
+    struct page* target_page;
     struct hash_iterator iter_hash;
 
     /* Initializes I for iterating hash table H. */
     hash_first(&iter_hash, spt->hash_table);
     while (hash_next(&iter_hash)) {
-        struct page* target_page = hash_entry(hash_cur(&iter_hash), struct page, elem_for_hash_table);
+        target_page = hash_entry(hash_cur(&iter_hash), struct page, elem_for_hash_table);
         if (target_page->operations->type == VM_FILE)
             do_munmap(target_page->va);
     }

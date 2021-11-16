@@ -52,8 +52,8 @@ anon_swap_in (struct page *page, void *kva) {
     result = bitmap_test(swap_bitmap, bit);
 
     if (result) {
-        for (int i = 0; i < PGSIZE / DISK_SECTOR_SIZE; ++i)
-            disk_read(swap_disk, bit * (PGSIZE / DISK_SECTOR_SIZE) + i, kva + DISK_SECTOR_SIZE * i);
+        for (int index = 0; index < PGSIZE / DISK_SECTOR_SIZE; ++index)
+            disk_read(swap_disk, bit * (PGSIZE / DISK_SECTOR_SIZE) + index, kva + DISK_SECTOR_SIZE * index);
 
         bitmap_set(swap_bitmap, bit, false);
     }
@@ -73,8 +73,8 @@ anon_swap_out (struct page *page) {
         result = false;
 
     if (result) {
-        for (int i = 0; i < PGSIZE / DISK_SECTOR_SIZE; ++i)
-            disk_write(swap_disk, bit * PGSIZE / DISK_SECTOR_SIZE + i, page->va + DISK_SECTOR_SIZE * i);
+        for (int index = 0; index < PGSIZE / DISK_SECTOR_SIZE; ++index)
+            disk_write(swap_disk, bit * PGSIZE / DISK_SECTOR_SIZE + index, page->va + DISK_SECTOR_SIZE * index);
 
         bitmap_set(swap_bitmap, bit, true);
         pml4_clear_page(thread_current()->pml4, page->va);
